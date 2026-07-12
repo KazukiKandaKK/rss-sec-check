@@ -151,7 +151,15 @@ gcloud iam service-accounts keys create ./service-account-rss-fetch.json \
   --iam-account=rss-fetch-bot@<project-id>.iam.gserviceaccount.com
 ```
 
-2. キー JSON の中身全体を GitHub リポジトリの Secret **`FIREBASE_SERVICE_ACCOUNT`** に登録します（Settings → Secrets and variables → Actions）。キーファイル自体はコミットしないでください（`.gitignore` 済み）。
+2. キー JSON の中身全体を GitHub リポジトリの Secret **`FIREBASE_SERVICE_ACCOUNT`** に登録します（Settings → Secrets and variables → Actions）。**ファイル名ではなく、ファイルの中身そのものを貼り付けてください。**
+
+   例:
+
+   ```bash
+   cat ./service-account-rss-fetch.json | pbcopy
+   ```
+
+   または Linux では `xclip -selection c` などでクリップボードにコピーし、GitHub Secrets の値欄にペーストします。キーファイル自体はコミットしないでください（`.gitignore` 済み）。
 
 3. ワークフローは毎日 JST 6:00（UTC 21:07）に実行されます。手動実行は Actions タブの「Fetch RSS feeds」→ Run workflow から行えます。
 
