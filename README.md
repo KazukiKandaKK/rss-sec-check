@@ -106,25 +106,58 @@ FIRESTORE_EMULATOR_HOST=localhost:8080 npm run fetch
 
 ## デプロイ手順
 
-1. Firebase プロジェクトを作成し、Blaze プランにアップグレードします。Cloud Functions + Cloud Scheduler は Spark プランでは利用できません。
+本番プロジェクトは `rss-sec-check`（Firestore ロケーション: `asia-northeast1`、Hosting: https://rss-sec-check.web.app）です。
 
-2. `.firebaserc` のプロジェクトIDを実際のものに更新します。
-
-3. 必要な環境変数を Functions に設定します。
+1. Firebase プロジェクトを作成し、`.firebaserc` の `projects.default` を実際のプロジェクトIDに更新します。
 
 ```bash
-firebase functions:config:set app.owner_email="owner@example.com"
+firebase projects:create <project-id>
+firebase apps:create WEB <app-name> --project <project-id>
+firebase apps:sdkconfig WEB <app-id> --project <project-id>   # .env の VITE_FIREBASE_* に転記
+gcloud firestore databases create --database="(default)" --location=asia-northeast1 --project=<project-id>
 ```
 
-または、`.env` ファイルを Functions ディレクトリに配置し、Cloud Secret Manager 等を使用してください。
+2. Firebase Console → Authentication で「始める」を押し、**Google プロバイダ**を有効化してサポートメールを設定します（コンソールから有効化すると OAuth クライアントは自動プロビジョニングされます）。Authentication は Spark プランのまま無料で利用できます。
 
-4. サービスアカウントキーを作成し、`GOOGLE_APPLICATION_CREDENTIALS` に設定します（本番Functionsの実行には不要ですが、CLIスクリプトを本番Firestoreに接続する場合に必要です）。
+3. ルート `.env` に Firebase 構成情報と所有者メール（`VITE_OWNER_EMAIL` / `OWNER_EMAIL`）を設定します。
 
-5. デプロイします。
+4. 初期フィードと `config/owner` ドキュメントを本番 Firestore に投入します。ローカルの Application Default Credentials（`gcloud auth application-default login`）があればサービスアカウントキーは不要です。
 
 ```bash
-firebase deploy
+GOOGLE_CLOUD_QUOTA_PROJECT=<project-id> npm --prefix scripts run seed
 ```
+
+5. デプロイします（`firestore:rules` / `firestore:indexes` / `hosting`。Spark プランでは `functions` はデプロイできないため除外します）。
+
+```bash
+npm --prefix web run lint && npm --prefix web run typecheck && npm --prefix functions run build
+firebase deploy --only firestore,hosting
+```
+
+## 定期取得（GitHub Actions・無料）
+
+本番の記事取得は Cloud Functions ではなく **GitHub Actions**（`.github/workflows/fetch-feeds.yml`、毎時実行）で行います。Spark プラン（無料）のままで動作します。
+
+セットアップ:
+
+1. Firestore 書き込み権限（`roles/datastore.user`）を持つサービスアカウントを作成し、JSON キーを発行します。
+
+```bash
+gcloud iam service-accounts create rss-fetch-bot --project=<project-id>
+gcloud projects add-iam-policy-binding <project-id> \
+  --member="serviceAccount:rss-fetch-bot@<project-id>.iam.gserviceaccount.com" \
+  --role="roles/datastore.user"
+gcloud iam service-accounts keys create ./service-account-rss-fetch.json \
+  --iam-account=rss-fetch-bot@<project-id>.iam.gserviceaccount.com
+```
+
+2. キー JSON の中身全体を GitHub リポジトリの Secret **`FIREBASE_SERVICE_ACCOUNT`** に登録します（Settings → Secrets and variables → Actions）。キーファイル自体はコミットしないでください（`.gitignore` 済み）。
+
+3. ワークフローは毎時 23 分に実行されます。手動実行は Actions タブの「Fetch RSS feeds」→ Run workflow から行えます。
+
+### Blaze プランに移行する場合
+
+課金を有効化（Blaze）すれば、同梱の Cloud Functions `fetchRssOnSchedule`（30分間隔、`FETCH_SCHEDULE_INTERVAL` で変更可）に切り替えられます。`firebase deploy --only functions` で Cloud Scheduler ジョブが自動作成されます。その場合は GitHub Actions ワークフローを無効化してください。
 
 ## 著作権上の制約
 
@@ -133,7 +166,7 @@ firebase deploy
 
 ## 備考：定期関数のプラン
 
-Cloud Functions の `onSchedule` トリガーと Cloud Scheduler を使用するため、**Blaze プラン（従量課金）が必要**です。無料のSparkプランを維持したい場合は、取得処理を `functions/src/lib/fetchFeeds.ts` を呼び出す GitHub Actions の定期ワークフロー（`firebase-admin` + サービスアカウント）に切り替えられます。
+Cloud Functions の `onSchedule` トリガーと Cloud Scheduler は **Blaze プラン（従量課金）が必要**なため、本番では Spark プランのまま GitHub Actions で定期取得しています（上記「定期取得（GitHub Actions・無料）」参照）。
 
 ## スクリプト
 
