@@ -1,0 +1,25 @@
+{
+  "name": "rss-sec-check",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "functions",
+    "web",
+    "scripts"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "build:functions": "npm --prefix functions run build",
+    "build:web": "npm --prefix web run build",
+    "seed": "npm --prefix functions run build && npm --prefix scripts run seed",
+    "fetch": "npm --prefix functions run build && npm --prefix scripts run fetch",
+    "emulators": "firebase emulators:start",
+    "typecheck": "npm --prefix functions run build && npm --prefix web run typecheck"
+  },
+  "devDependencies": {
+    "firebase-tools": "^13.0.0"
+  },
+  "engines": {
+    "node": "22"
+  }
+}

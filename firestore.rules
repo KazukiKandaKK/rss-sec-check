@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Owner email is stored in config/owner. The seed script creates it from .env.
+    function getOwnerEmail() {
+      return get(/databases/$(database)/documents/config/owner).data.email;
+    }
+
+    function isOwner() {
+      return request.auth != null && request.auth.token.email == getOwnerEmail();
+    }
+
+    match /config/{docId} {
+      allow get: if request.auth != null;
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    match /articles/{articleId} {
+      allow read: if isOwner();
+      allow create, delete: if false;
+      allow update: if isOwner() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['read', 'starred']);
+    }
+
+    match /feeds/{feedId} {
+      allow read, write: if isOwner();
+    }
+  }
+}
