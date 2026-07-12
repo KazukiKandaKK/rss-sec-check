@@ -30,8 +30,8 @@ const defaultSeeds: SeedFeed[] = [
     enabled: true,
   },
   {
-    url: "https://www.us-cert.gov/ncas/current-activity.xml",
-    name: "CISA Current Activity",
+    url: "https://www.cisa.gov/cybersecurity-advisories/all.xml",
+    name: "CISA Advisories",
     category: "Alert",
     enabled: true,
   },
