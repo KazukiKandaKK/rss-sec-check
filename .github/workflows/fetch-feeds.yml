@@ -2,8 +2,9 @@ name: Fetch RSS feeds
 
 on:
   schedule:
-    # 毎時実行（privateリポジトリでもActions無料枠に収まる頻度）
-    - cron: "23 * * * *"
+    # 毎日 JST 6:00（UTC 21:00）に実行。GitHubのcronは正時ちょうどだと
+    # 混雑で遅延しやすいため7分にずらしている
+    - cron: "7 21 * * *"
   workflow_dispatch:
 
 concurrency:
