@@ -136,7 +136,7 @@ firebase deploy --only firestore,hosting
 
 ## 定期取得（GitHub Actions・無料）
 
-本番の記事取得は Cloud Functions ではなく **GitHub Actions**（`.github/workflows/fetch-feeds.yml`、毎時実行）で行います。Spark プラン（無料）のままで動作します。
+本番の記事取得は Cloud Functions ではなく **GitHub Actions**（`.github/workflows/fetch-feeds.yml`、毎日 JST 6:00 実行）で行います。Spark プラン（無料）のままで動作します。
 
 セットアップ:
 
@@ -153,7 +153,7 @@ gcloud iam service-accounts keys create ./service-account-rss-fetch.json \
 
 2. キー JSON の中身全体を GitHub リポジトリの Secret **`FIREBASE_SERVICE_ACCOUNT`** に登録します（Settings → Secrets and variables → Actions）。キーファイル自体はコミットしないでください（`.gitignore` 済み）。
 
-3. ワークフローは毎時 23 分に実行されます。手動実行は Actions タブの「Fetch RSS feeds」→ Run workflow から行えます。
+3. ワークフローは毎日 JST 6:00（UTC 21:07）に実行されます。手動実行は Actions タブの「Fetch RSS feeds」→ Run workflow から行えます。
 
 ### Blaze プランに移行する場合
 
