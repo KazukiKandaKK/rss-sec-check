@@ -106,25 +106,37 @@ FIRESTORE_EMULATOR_HOST=localhost:8080 npm run fetch
 
 ## デプロイ手順
 
-1. Firebase プロジェクトを作成し、Blaze プランにアップグレードします。Cloud Functions + Cloud Scheduler は Spark プランでは利用できません。
+本番プロジェクトは `rss-sec-check`（Firestore ロケーション: `asia-northeast1`、Hosting: https://rss-sec-check.web.app）です。
 
-2. `.firebaserc` のプロジェクトIDを実際のものに更新します。
-
-3. 必要な環境変数を Functions に設定します。
+1. Firebase プロジェクトを作成し、`.firebaserc` の `projects.default` を実際のプロジェクトIDに更新します。
 
 ```bash
-firebase functions:config:set app.owner_email="owner@example.com"
+firebase projects:create <project-id>
+firebase apps:create WEB <app-name> --project <project-id>
+firebase apps:sdkconfig WEB <app-id> --project <project-id>   # .env の VITE_FIREBASE_* に転記
+gcloud firestore databases create --database="(default)" --location=asia-northeast1 --project=<project-id>
 ```
 
-または、`.env` ファイルを Functions ディレクトリに配置し、Cloud Secret Manager 等を使用してください。
+2. プロジェクトを **Blaze プラン**にアップグレードします（Cloud Functions 2nd gen + Cloud Scheduler に必須）。[Google Cloud Console の課金設定](https://console.cloud.google.com/billing) で有効な課金アカウントをプロジェクトに紐付けてください。
 
-4. サービスアカウントキーを作成し、`GOOGLE_APPLICATION_CREDENTIALS` に設定します（本番Functionsの実行には不要ですが、CLIスクリプトを本番Firestoreに接続する場合に必要です）。
+3. Firebase Console → Authentication で「始める」を押し、**Google プロバイダ**を有効化してサポートメールを設定します（コンソールから有効化すると OAuth クライアントは自動プロビジョニングされます）。
 
-5. デプロイします。
+4. ルート `.env` に Firebase 構成情報と所有者メール（`VITE_OWNER_EMAIL` / `OWNER_EMAIL`）を設定します。
+
+5. 初期フィードと `config/owner` ドキュメントを本番 Firestore に投入します。ローカルの Application Default Credentials（`gcloud auth application-default login`）があればサービスアカウントキーは不要です。
 
 ```bash
+npm --prefix scripts run seed
+```
+
+6. デプロイします（`firestore:rules` / `firestore:indexes` / `functions` / `hosting`）。
+
+```bash
+npm --prefix web run lint && npm --prefix web run typecheck && npm --prefix functions run build
 firebase deploy
 ```
+
+`fetchRssOnSchedule`（30分間隔、`FETCH_SCHEDULE_INTERVAL` で変更可）の Cloud Scheduler ジョブは `firebase deploy --only functions` 時に自動作成されます。実行状況は `firebase functions:log` か GCP コンソールで確認できます。
 
 ## 著作権上の制約
 
