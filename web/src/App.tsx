@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Header } from "./components/Header";
 import { HomePage } from "./pages/HomePage";
 import { FeedsPage } from "./pages/FeedsPage";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
 import { SunIcon, MoonIcon } from "./components/Icons";
@@ -108,7 +109,9 @@ function App() {
           <MoonIcon className="h-5 w-5" />
         )}
       </button>
-      {page === "home" ? <HomePage sources={sources} /> : <FeedsPage />}
+      <ErrorBoundary>
+        {page === "home" ? <HomePage sources={sources} /> : <FeedsPage />}
+      </ErrorBoundary>
     </div>
   );
 }

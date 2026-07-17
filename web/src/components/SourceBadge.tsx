@@ -23,14 +23,15 @@ interface SourceBadgeProps {
 }
 
 export function SourceBadge({ name }: SourceBadgeProps) {
-  const dotClass = DOTS[hash(name) % DOTS.length];
+  const safeName = typeof name === "string" ? name : "";
+  const dotClass = DOTS[hash(safeName) % DOTS.length];
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
       <span
         className={`h-1.5 w-1.5 rounded-full ${dotClass}`}
         aria-hidden="true"
       />
-      {name}
+      {safeName || "未分類"}
     </span>
   );
 }

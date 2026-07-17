@@ -20,9 +20,7 @@ export const googleProvider = new GoogleAuthProvider();
 export const OWNER_EMAIL = import.meta.env.VITE_OWNER_EMAIL || "";
 
 const useEmulator =
-  import.meta.env.DEV ||
-  import.meta.env.VITE_USE_EMULATOR === true ||
-  import.meta.env.VITE_USE_EMULATOR === "true";
+  import.meta.env.DEV || import.meta.env.VITE_USE_EMULATOR === "true";
 
 if (useEmulator) {
   connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
