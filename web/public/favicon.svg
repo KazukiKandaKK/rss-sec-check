@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="RSS Security News">
+  <style>
+    .bg { fill: #111827; }
+    .fg { fill: #f9fafb; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #f9fafb; }
+      .fg { fill: #111827; }
+    }
+  </style>
+  <path class="bg" d="M16 3l11 4v9c0 6-5 12-11 14-6-2-11-8-11-14V7l11-4z"/>
+  <circle cx="11" cy="19" r="1.5" class="fg"/>
+  <path class="fg" d="M11 15c2 0 4 2 4 4h-1.5c0-1.5-1-2.5-2.5-2.5V15z"/>
+  <path class="fg" d="M11 11c4.5 0 8 3.5 8 8h-1.5c0-3.5-3-6.5-6.5-6.5V11z"/>
+</svg>

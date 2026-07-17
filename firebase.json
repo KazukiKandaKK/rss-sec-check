@@ -13,6 +13,7 @@
     }
   ],
   "hosting": {
+    "site": "rss-sec-check",
     "public": "web/dist",
     "ignore": [
       "firebase.json",
