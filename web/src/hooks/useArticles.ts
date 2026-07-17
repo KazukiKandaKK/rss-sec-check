@@ -10,6 +10,12 @@ import {
 import { db } from "../lib/firebase";
 import { Article, ArticleFilter } from "../types";
 
+function toString(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value == null) return "";
+  return String(value);
+}
+
 export function useArticles(
   filter: ArticleFilter,
   source: string,
@@ -46,8 +52,8 @@ export function useArticles(
           if (!search.trim()) return true;
           const term = search.toLowerCase();
           return (
-            article.title.toLowerCase().includes(term) ||
-            article.snippet.toLowerCase().includes(term)
+            toString(article.title).toLowerCase().includes(term) ||
+            toString(article.snippet).toLowerCase().includes(term)
           );
         });
 
@@ -64,12 +70,20 @@ export function useArticles(
   }, [filter, source, search]);
 
   const toggleRead = async (article: Article) => {
+    if (!article.id) {
+      console.error("Cannot toggle read: article.id is missing");
+      return;
+    }
     await updateDoc(doc(db, "articles", article.id), {
       read: !article.read,
     });
   };
 
   const toggleStar = async (article: Article) => {
+    if (!article.id) {
+      console.error("Cannot toggle star: article.id is missing");
+      return;
+    }
     await updateDoc(doc(db, "articles", article.id), {
       starred: !article.starred,
     });
