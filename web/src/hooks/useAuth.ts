@@ -21,7 +21,7 @@ export function useAuth() {
     return unsubscribe;
   }, []);
 
-  const isOwner = !!user && user.email === OWNER_EMAIL;
+  const isOwner = !!user && user.emailVerified === true && user.email === OWNER_EMAIL;
 
   const signIn = async () => {
     if (auth.emulatorConfig) {

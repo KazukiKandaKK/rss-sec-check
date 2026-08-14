@@ -7,13 +7,29 @@ service cloud.firestore {
     }
 
     function isOwner() {
-      return request.auth != null && request.auth.token.email == getOwnerEmail();
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == getOwnerEmail();
+    }
+
+    function isValidFeedData(data) {
+      return data.keys().hasOnly(['url', 'name', 'category', 'enabled'])
+        && data.url is string
+        && data.url.matches('^https?://.+')
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 100
+        && data.category is string
+        && data.category.size() <= 50
+        && data.enabled is bool;
     }
 
     match /config/{docId} {
-      allow get: if request.auth != null;
-      allow list: if false;
-      allow create, update, delete: if false;
+      // The owner email is written by the Admin SDK seed script and should not be exposed to clients.
+      allow get: if request.auth != null
+        && request.auth.token.email_verified == true
+        && resource.data.email == request.auth.token.email;
+      allow list, create, update, delete: if false;
     }
 
     match /articles/{articleId} {
@@ -21,11 +37,18 @@ service cloud.firestore {
       allow create, delete: if false;
       allow update: if isOwner() &&
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['read', 'starred']);
+          .hasOnly(['read', 'starred']) &&
+        request.resource.data.read is bool &&
+        request.resource.data.starred is bool;
     }
 
     match /feeds/{feedId} {
-      allow read, write: if isOwner();
+      allow read, delete: if isOwner();
+      allow create: if isOwner() && isValidFeedData(request.resource.data);
+      allow update: if isOwner() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['enabled']) &&
+        request.resource.data.enabled is bool;
     }
   }
 }

@@ -28,6 +28,29 @@ const MAX_SNIPPET_LENGTH = 200;
 
 const parser = new Parser({ timeout: 30000 });
 
+const ALLOWED_SCHEMES = new Set(["http:", "https:"]);
+
+export function isValidHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ALLOWED_SCHEMES.has(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
+function resolveArticleLink(link: string, feedUrl: string): string | null {
+  try {
+    const absolute = new URL(link, feedUrl);
+    if (!ALLOWED_SCHEMES.has(absolute.protocol)) {
+      return null;
+    }
+    return absolute.href;
+  } catch {
+    return null;
+  }
+}
+
 function toSnippet(item: Parser.Item): string {
   // Only a short snippet is stored — never the full article body (copyright).
   const raw = item.contentSnippet || item.summary || "";
@@ -57,14 +80,24 @@ export function articleIdForLink(link: string): string {
 }
 
 export async function fetchFeedItems(feedUrl: string): Promise<FeedItem[]> {
+  if (!isValidHttpUrl(feedUrl)) {
+    throw new Error(`Invalid feed URL scheme: ${feedUrl}`);
+  }
+
   const parsed = await parser.parseURL(feedUrl);
   const items: FeedItem[] = [];
   for (const item of parsed.items.slice(0, MAX_ITEMS_PER_FEED)) {
-    const link = item.link?.trim();
+    const rawLink = item.link?.trim();
     const title = item.title?.trim();
-    if (!link || !title) {
+    if (!rawLink || !title) {
       continue;
     }
+
+    const link = resolveArticleLink(rawLink, feedUrl);
+    if (!link) {
+      continue;
+    }
+
     items.push({
       title,
       link,
