@@ -76,7 +76,8 @@ async function main() {
 
   const batch = db.batch();
   batch.set(ownerRef, { email: ownerEmail }, { merge: true });
-  console.log(`Seeding owner: ${ownerEmail}`);
+  // Avoid logging PII such as the owner email.
+  console.log("Seeding owner configuration");
 
   for (const seed of defaultSeeds) {
     const feedId = seed.url
