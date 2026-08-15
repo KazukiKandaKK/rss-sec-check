@@ -1,53 +1,36 @@
 import { useEffect, useState } from "react";
 import {
-  addDoc,
   collection,
-  deleteDoc,
-  doc,
   onSnapshot,
   orderBy,
   query,
-  updateDoc,
+  where,
 } from "firebase/firestore";
-import { db } from "../lib/firebase";
-import { useAuth } from "./useAuth";
+import { db, OWNER_EMAIL } from "../lib/firebase";
 import { Feed } from "../types";
+import { toFeeds } from "../lib/feed";
 
-export function useFeeds() {
+export function useFeeds(isOwner: boolean) {
   const [feeds, setFeeds] = useState<Feed[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
 
   useEffect(() => {
-    if (!user) {
+    if (!isOwner) {
       setFeeds([]);
       setLoading(false);
       return;
     }
-    const q = query(collection(db, "feeds"), orderBy("name", "asc"));
+    const q = query(
+      collection(db, "feeds"),
+      where("ownerEmail", "==", OWNER_EMAIL),
+      orderBy("name", "asc")
+    );
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((docItem) => ({
-        id: docItem.id,
-        ...docItem.data(),
-        enabled: !!docItem.data().enabled,
-      })) as Feed[];
-      setFeeds(data);
+      setFeeds(toFeeds(snapshot.docs));
       setLoading(false);
     });
     return unsubscribe;
-  }, [user]);
+  }, [isOwner]);
 
-  const addFeed = async (feed: Omit<Feed, "id">) => {
-    await addDoc(collection(db, "feeds"), feed);
-  };
-
-  const updateFeed = async (id: string, feed: Partial<Feed>) => {
-    await updateDoc(doc(db, "feeds", id), feed);
-  };
-
-  const deleteFeed = async (id: string) => {
-    await deleteDoc(doc(db, "feeds", id));
-  };
-
-  return { feeds, loading, addFeed, updateFeed, deleteFeed };
+  return { feeds, loading };
 }

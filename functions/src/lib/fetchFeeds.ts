@@ -7,6 +7,7 @@ export interface FeedDoc {
   name: string;
   category: string;
   enabled: boolean;
+  ownerEmail?: string;
 }
 
 export interface FeedItem {
@@ -137,6 +138,7 @@ async function storeFeedItems(
       snippet: item.snippet,
       publishedAt: Timestamp.fromDate(item.publishedAt),
       fetchedAt,
+      ownerEmail: feed.ownerEmail,
     };
     if (snapshots[index].exists) {
       // Keep the user's read/starred flags on refresh.
@@ -152,6 +154,21 @@ async function storeFeedItems(
   return { inserted, updated };
 }
 
+async function getOwnerEmail(db: Firestore): Promise<string | undefined> {
+  try {
+    const ownerDoc = await db.collection("config").doc("owner").get();
+    if (ownerDoc.exists) {
+      const data = ownerDoc.data();
+      if (data && typeof data.email === "string") {
+        return data.email;
+      }
+    }
+  } catch {
+    // Ignore and return undefined so callers can decide how to proceed.
+  }
+  return undefined;
+}
+
 export async function fetchAllFeeds(db: Firestore): Promise<FetchResult[]> {
   const feedsSnapshot = await db
     .collection("feeds")
@@ -159,9 +176,26 @@ export async function fetchAllFeeds(db: Firestore): Promise<FetchResult[]> {
     .get();
 
   const results: FetchResult[] = [];
+  let ownerEmail: string | undefined;
 
   for (const feedDoc of feedsSnapshot.docs) {
-    const feed = feedDoc.data() as FeedDoc;
+    const feed: FeedDoc = { ...(feedDoc.data() as FeedDoc) };
+    if (!feed.ownerEmail) {
+      if (!ownerEmail) {
+        ownerEmail = await getOwnerEmail(db);
+      }
+      feed.ownerEmail = ownerEmail;
+    }
+    if (!feed.ownerEmail) {
+      console.error(`[${feed.name}] owner email not configured; skipping`);
+      results.push({
+        feed,
+        inserted: 0,
+        updated: 0,
+        error: "Owner email not configured",
+      });
+      continue;
+    }
     try {
       const items = await fetchFeedItems(feed.url);
       const { inserted, updated } = await storeFeedItems(db, feed, items);

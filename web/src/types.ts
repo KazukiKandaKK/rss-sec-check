@@ -11,6 +11,7 @@ export interface Article {
   fetchedAt: Timestamp;
   read: boolean;
   starred: boolean;
+  ownerEmail: string;
 }
 
 export interface Feed {
@@ -19,6 +20,7 @@ export interface Feed {
   name: string;
   category: string;
   enabled: boolean;
+  ownerEmail: string;
 }
 
 export type ArticleFilter = "all" | "unread" | "starred";

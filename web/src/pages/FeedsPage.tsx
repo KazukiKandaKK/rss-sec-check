@@ -1,9 +1,13 @@
 import { FeedForm } from "../components/FeedForm";
 import { FeedList } from "../components/FeedList";
+import { useAuth } from "../hooks/useAuth";
 import { useFeeds } from "../hooks/useFeeds";
+import { useFeedActions } from "../hooks/useFeedActions";
 
 export function FeedsPage() {
-  const { feeds, loading, addFeed, updateFeed, deleteFeed } = useFeeds();
+  const { isOwner } = useAuth();
+  const { feeds, loading } = useFeeds(isOwner);
+  const { addFeed, updateFeed, deleteFeed } = useFeedActions();
 
   const handleToggleEnabled = (feed: { id: string; enabled: boolean }) => {
     updateFeed(feed.id, { enabled: !feed.enabled });

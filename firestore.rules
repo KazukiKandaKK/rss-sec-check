@@ -1,19 +1,20 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Owner email is stored in config/owner. The seed script creates it from .env.
-    function getOwnerEmail() {
-      return get(/databases/$(database)/documents/config/owner).data.email;
-    }
-
     function isOwner() {
       return request.auth != null
         && request.auth.token.email_verified == true
-        && request.auth.token.email == getOwnerEmail();
+        && request.auth.token.email == resource.data.ownerEmail;
+    }
+
+    function isOwnerCreating(data) {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == data.ownerEmail;
     }
 
     function isValidFeedData(data) {
-      return data.keys().hasOnly(['url', 'name', 'category', 'enabled'])
+      return data.keys().hasOnly(['url', 'name', 'category', 'enabled', 'ownerEmail'])
         && data.url is string
         && data.url.matches('^https?://.+')
         && data.name is string
@@ -21,11 +22,12 @@ service cloud.firestore {
         && data.name.size() <= 100
         && data.category is string
         && data.category.size() <= 50
-        && data.enabled is bool;
+        && data.enabled is bool
+        && data.ownerEmail is string
+        && data.ownerEmail == request.auth.token.email;
     }
 
     match /config/{docId} {
-      // The owner email is written by the Admin SDK seed script and should not be exposed to clients.
       allow get: if request.auth != null
         && request.auth.token.email_verified == true
         && resource.data.email == request.auth.token.email;
@@ -33,7 +35,8 @@ service cloud.firestore {
     }
 
     match /articles/{articleId} {
-      allow read: if isOwner();
+      allow get: if isOwner();
+      allow list: if isOwner();
       allow create, delete: if false;
       allow update: if isOwner() &&
         request.resource.data.diff(resource.data).affectedKeys()
@@ -43,8 +46,10 @@ service cloud.firestore {
     }
 
     match /feeds/{feedId} {
-      allow read, delete: if isOwner();
-      allow create: if isOwner() && isValidFeedData(request.resource.data);
+      allow get: if isOwner();
+      allow list: if isOwner();
+      allow create: if isOwnerCreating(request.resource.data) && isValidFeedData(request.resource.data);
+      allow delete: if isOwner();
       allow update: if isOwner() &&
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['enabled']) &&

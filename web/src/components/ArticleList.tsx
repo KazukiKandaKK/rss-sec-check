@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ArticleFilter } from "../types";
+import { useAuth } from "../hooks/useAuth";
 import { useArticles } from "../hooks/useArticles";
+import { useArticleActions } from "../hooks/useArticleActions";
+import { filterArticles } from "../lib/article";
 import { ArticleFilters } from "./ArticleFilters";
 import { ArticleCard } from "./ArticleCard";
 
@@ -12,11 +15,13 @@ export function ArticleList({ sources }: ArticleListProps) {
   const [filter, setFilter] = useState<ArticleFilter>("all");
   const [source, setSource] = useState("all");
   const [search, setSearch] = useState("");
+  const { isOwner } = useAuth();
 
-  const { articles, loading, error, toggleRead, toggleStar } = useArticles(
-    filter,
-    source,
-    search
+  const { articles, loading, error } = useArticles(isOwner);
+  const { toggleRead, toggleStar } = useArticleActions();
+  const filteredArticles = useMemo(
+    () => filterArticles(articles, filter, source, search),
+    [articles, filter, source, search]
   );
 
   return (
@@ -38,7 +43,7 @@ export function ArticleList({ sources }: ArticleListProps) {
           ) : (
             <>
               <span className="font-medium text-gray-900 dark:text-gray-100">
-                {articles.length}
+                {filteredArticles.length}
               </span>
               件の記事
             </>
@@ -78,7 +83,7 @@ export function ArticleList({ sources }: ArticleListProps) {
         </div>
       )}
 
-      {!loading && !error && articles.length === 0 && (
+      {!loading && !error && filteredArticles.length === 0 && (
         <div className="rounded-lg border border-gray-200 bg-white py-12 text-center dark:border-gray-800 dark:bg-gray-900">
           <p className="text-gray-500 dark:text-gray-400">
             {filter === "all" && source === "all" && !search.trim()
@@ -88,9 +93,9 @@ export function ArticleList({ sources }: ArticleListProps) {
         </div>
       )}
 
-      {!loading && !error && articles.length > 0 && (
+      {!loading && !error && filteredArticles.length > 0 && (
         <div className="space-y-3">
-          {articles.map((article) => (
+          {filteredArticles.map((article) => (
             <ArticleCard
               key={article.id}
               article={article}
