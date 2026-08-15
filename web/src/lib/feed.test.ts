@@ -12,6 +12,7 @@ function makeDoc(
       name: "Example Feed",
       category: "News",
       enabled: true,
+      ownerEmail: "owner@example.com",
       ...overrides,
     }),
   };
@@ -27,6 +28,7 @@ describe("toFeed", () => {
     expect(feed.name).toBe("Example Feed");
     expect(feed.category).toBe("News");
     expect(feed.enabled).toBe(true);
+    expect(feed.ownerEmail).toBe("owner@example.com");
   });
 
   it("normalizes missing enabled flag", () => {

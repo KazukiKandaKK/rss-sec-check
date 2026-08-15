@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ArticleFilter } from "../types";
+import { useAuth } from "../hooks/useAuth";
 import { useArticles } from "../hooks/useArticles";
 import { useArticleActions } from "../hooks/useArticleActions";
 import { filterArticles } from "../lib/article";
@@ -14,8 +15,9 @@ export function ArticleList({ sources }: ArticleListProps) {
   const [filter, setFilter] = useState<ArticleFilter>("all");
   const [source, setSource] = useState("all");
   const [search, setSearch] = useState("");
+  const { isOwner } = useAuth();
 
-  const { articles, loading, error } = useArticles();
+  const { articles, loading, error } = useArticles(isOwner);
   const { toggleRead, toggleStar } = useArticleActions();
   const filteredArticles = useMemo(
     () => filterArticles(articles, filter, source, search),

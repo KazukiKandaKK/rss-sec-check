@@ -19,6 +19,7 @@ function makeDoc(
       fetchedAt: Timestamp.fromDate(new Date("2024-01-02T00:00:00Z")),
       read: false,
       starred: false,
+      ownerEmail: "owner@example.com",
       ...overrides,
     }),
   };
@@ -36,6 +37,7 @@ function makeArticle(overrides: Partial<Article> = {}): Article {
     fetchedAt: Timestamp.fromDate(new Date("2024-01-02T00:00:00Z")),
     read: false,
     starred: false,
+    ownerEmail: "owner@example.com",
     ...overrides,
   };
 }
@@ -55,6 +57,7 @@ describe("toArticle", () => {
     expect(article.fetchedAt).toStrictEqual(doc.data().fetchedAt);
     expect(article.read).toBe(false);
     expect(article.starred).toBe(false);
+    expect(article.ownerEmail).toBe("owner@example.com");
   });
 
   it("normalizes missing read and starred flags", () => {

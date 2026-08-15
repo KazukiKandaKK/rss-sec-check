@@ -17,7 +17,7 @@ function App() {
   });
 
   const { user, loading, isOwner, signIn } = useAuth();
-  const { feeds } = useFeeds();
+  const { feeds } = useFeeds(isOwner);
 
   useEffect(() => {
     if (darkMode) {

@@ -85,7 +85,7 @@ async function main() {
       .replace(/[^a-zA-Z0-9]/g, "_")
       .toLowerCase();
     const ref = db.collection("feeds").doc(feedId);
-    batch.set(ref, seed, { merge: true });
+    batch.set(ref, { ...seed, ownerEmail }, { merge: true });
     console.log(`Seeding feed: ${seed.name} (${seed.url})`);
   }
 

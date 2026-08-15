@@ -15,6 +15,7 @@ export function toFeed(docItem: FirestoreDoc): Feed {
     name: coerceToString(data.name),
     category: coerceToString(data.category),
     enabled: !!data.enabled,
+    ownerEmail: coerceToString(data.ownerEmail),
   } as Feed;
 }
 

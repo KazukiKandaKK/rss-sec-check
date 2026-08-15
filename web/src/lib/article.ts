@@ -32,6 +32,7 @@ export function toArticle(docItem: FirestoreDoc): Article {
     fetchedAt: toTimestamp(data.fetchedAt),
     read: !!data.read,
     starred: !!data.starred,
+    ownerEmail: coerceToString(data.ownerEmail),
   } as Article;
 }
 
