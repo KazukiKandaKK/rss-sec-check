@@ -1,35 +1,32 @@
 import { useCallback } from "react";
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  updateDoc,
-} from "firebase/firestore";
-import { db } from "../lib/firebase";
+import { useRepositories } from "../application/repositories/RepositoryContext";
 import { useAuth } from "./useAuth";
-import { Feed } from "../types";
+import { Feed } from "../domain/types";
 
 export function useFeedActions() {
+  const { feedRepository } = useRepositories();
   const { user } = useAuth();
 
   const addFeed = useCallback(
     async (feed: Omit<Feed, "id" | "ownerEmail">) => {
-      await addDoc(collection(db, "feeds"), {
-        ...feed,
-        ownerEmail: user?.email ?? "",
-      });
+      await feedRepository.addFeed(feed, user?.email ?? "");
     },
-    [user]
+    [feedRepository, user]
   );
 
-  const updateFeed = useCallback(async (id: string, feed: Partial<Feed>) => {
-    await updateDoc(doc(db, "feeds", id), feed);
-  }, []);
+  const updateFeed = useCallback(
+    async (id: string, feed: Partial<Feed>) => {
+      await feedRepository.updateFeed(id, feed);
+    },
+    [feedRepository]
+  );
 
-  const deleteFeed = useCallback(async (id: string) => {
-    await deleteDoc(doc(db, "feeds", id));
-  }, []);
+  const deleteFeed = useCallback(
+    async (id: string) => {
+      await feedRepository.deleteFeed(id);
+    },
+    [feedRepository]
+  );
 
   return { addFeed, updateFeed, deleteFeed };
 }

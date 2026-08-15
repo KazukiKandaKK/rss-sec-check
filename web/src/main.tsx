@@ -1,10 +1,13 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import { RepositoryProvider } from "./infrastructure/providers/RepositoryProvider";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <RepositoryProvider>
+      <App />
+    </RepositoryProvider>
   </React.StrictMode>
 );
