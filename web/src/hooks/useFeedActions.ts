@@ -1,15 +1,16 @@
 import { useCallback } from "react";
 import { useRepositories } from "../application/repositories/RepositoryContext";
+import { Feed, FeedDraft, createFeedDraft } from "../domain/entities/feed";
 import { useAuth } from "./useAuth";
-import { Feed } from "../domain/types";
 
 export function useFeedActions() {
   const { feedRepository } = useRepositories();
   const { user } = useAuth();
 
   const addFeed = useCallback(
-    async (feed: Omit<Feed, "id" | "ownerEmail">) => {
-      await feedRepository.addFeed(feed, user?.email ?? "");
+    async (feed: FeedDraft) => {
+      const draft = createFeedDraft(feed);
+      await feedRepository.addFeed(draft, user?.email ?? "");
     },
     [feedRepository, user]
   );

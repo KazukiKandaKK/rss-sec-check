@@ -1,20 +1,26 @@
 import { useCallback } from "react";
 import { useRepositories } from "../application/repositories/RepositoryContext";
-import { Article } from "../domain/types";
+import {
+  Article,
+  toggleRead as toggleArticleRead,
+  toggleStar as toggleArticleStar,
+} from "../domain/entities/article";
 
 export function useArticleActions() {
   const { articleRepository } = useRepositories();
 
   const toggleRead = useCallback(
     async (article: Article) => {
-      await articleRepository.toggleRead(article);
+      const next = toggleArticleRead(article);
+      await articleRepository.updateRead(next);
     },
     [articleRepository]
   );
 
   const toggleStar = useCallback(
     async (article: Article) => {
-      await articleRepository.toggleStar(article);
+      const next = toggleArticleStar(article);
+      await articleRepository.updateStar(next);
     },
     [articleRepository]
   );

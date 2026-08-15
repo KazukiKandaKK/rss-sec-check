@@ -1,9 +1,10 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { ArticleFilter } from "../types";
+import { SearchQuery } from "../domain/types";
 import { useAuth } from "../hooks/useAuth";
 import { useArticles } from "../hooks/useArticles";
 import { useArticleActions } from "../hooks/useArticleActions";
-import { filterArticles } from "../lib/filterArticles";
+import { filterArticles } from "../domain/services/filterArticles";
 import { ArticleFilters } from "./ArticleFilters";
 import { ArticleCard } from "./ArticleCard";
 
@@ -20,9 +21,14 @@ export function ArticleList({ sources }: ArticleListProps) {
 
   const { articles, loading, error } = useArticles(isOwner);
   const { toggleRead, toggleStar } = useArticleActions();
+
+  const searchQuery = useMemo(
+    () => SearchQuery.of(deferredSearch),
+    [deferredSearch]
+  );
   const filteredArticles = useMemo(
-    () => filterArticles(articles, filter, source, deferredSearch),
-    [articles, filter, source, deferredSearch]
+    () => filterArticles(articles, filter, source, searchQuery),
+    [articles, filter, source, searchQuery]
   );
 
   return (

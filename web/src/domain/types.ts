@@ -1,24 +1,25 @@
-export interface Article {
-  id: string;
-  title: string;
-  link: string;
-  source: string;
-  feedUrl: string;
-  snippet: string;
-  publishedAt: Date;
-  fetchedAt: Date;
-  read: boolean;
-  starred: boolean;
-  ownerEmail: string;
-}
+export type { Article } from "./entities/article";
+export {
+  createArticle,
+  withReadStatus,
+  withStarredStatus,
+  markAsRead,
+  markAsUnread,
+  toggleRead as toggleArticleRead,
+  toggleStar as toggleArticleStar,
+  isUnread,
+  isStarred,
+} from "./entities/article";
 
-export interface Feed {
-  id: string;
-  url: string;
-  name: string;
-  category: string;
-  enabled: boolean;
-  ownerEmail: string;
-}
+export type { Feed, FeedDraft } from "./entities/feed";
+export {
+  createFeed,
+  createFeedDraft,
+  withEnabled,
+  toggleEnabled as toggleFeedEnabled,
+  isEnabled,
+} from "./entities/feed";
+
+export { SearchQuery } from "./valueObjects/searchQuery";
 
 export type ArticleFilter = "all" | "unread" | "starred";
