@@ -5,20 +5,6 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "enabled",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "name",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "feeds",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
           "fieldPath": "ownerEmail",
           "order": "ASCENDING"
         },

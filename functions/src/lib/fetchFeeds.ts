@@ -109,6 +109,42 @@ export async function fetchFeedItems(feedUrl: string): Promise<FeedItem[]> {
   return items;
 }
 
+function articleContentChanged(
+  snapshot: FirebaseFirestore.DocumentSnapshot,
+  item: FeedItem
+): boolean {
+  const data = snapshot.data();
+  if (!data) return true;
+
+  const newPublishedAt = Timestamp.fromDate(item.publishedAt).toMillis();
+  const currentPublishedAt =
+    data.publishedAt instanceof Timestamp ? data.publishedAt.toMillis() : 0;
+
+  return (
+    data.title !== item.title ||
+    data.link !== item.link ||
+    data.snippet !== item.snippet ||
+    currentPublishedAt !== newPublishedAt
+  );
+}
+
+function buildArticleData(
+  item: FeedItem,
+  feed: FeedDoc,
+  fetchedAt: Timestamp
+): Record<string, unknown> {
+  return {
+    title: item.title,
+    link: item.link,
+    source: feed.name,
+    feedUrl: feed.url,
+    snippet: item.snippet,
+    publishedAt: Timestamp.fromDate(item.publishedAt),
+    fetchedAt,
+    ownerEmail: feed.ownerEmail,
+  };
+}
+
 async function storeFeedItems(
   db: Firestore,
   feed: FeedDoc,
@@ -130,22 +166,31 @@ async function storeFeedItems(
 
   items.forEach((item, index) => {
     const ref = refs[index];
-    const base = {
-      title: item.title,
-      link: item.link,
-      source: feed.name,
-      feedUrl: feed.url,
-      snippet: item.snippet,
-      publishedAt: Timestamp.fromDate(item.publishedAt),
-      fetchedAt,
-      ownerEmail: feed.ownerEmail,
-    };
-    if (snapshots[index].exists) {
-      // Keep the user's read/starred flags on refresh.
-      batch.set(ref, base, { merge: true });
-      updated += 1;
+    const snapshot = snapshots[index];
+
+    if (snapshot.exists) {
+      // Avoid overwriting source/feedUrl for existing articles so the
+      // denormalized source name stays stable across feeds.
+      if (articleContentChanged(snapshot, item)) {
+        batch.set(
+          ref,
+          {
+            title: item.title,
+            link: item.link,
+            snippet: item.snippet,
+            publishedAt: Timestamp.fromDate(item.publishedAt),
+            fetchedAt,
+          },
+          { merge: true }
+        );
+        updated += 1;
+      }
     } else {
-      batch.set(ref, { ...base, read: false, starred: false });
+      batch.set(ref, {
+        ...buildArticleData(item, feed, fetchedAt),
+        read: false,
+        starred: false,
+      });
       inserted += 1;
     }
   });
