@@ -10,7 +10,16 @@ interface ArticleCardProps {
 }
 
 function toValidPublishedDate(value: unknown): Date {
-  if (value && typeof value === "object" && "toDate" in value && typeof (value as { toDate: () => Date }).toDate === "function") {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value;
+  }
+
+  if (
+    value &&
+    typeof value === "object" &&
+    "toDate" in value &&
+    typeof (value as { toDate: () => Date }).toDate === "function"
+  ) {
     try {
       const date = (value as { toDate: () => Date }).toDate();
       if (!Number.isNaN(date.getTime())) return date;
@@ -18,6 +27,7 @@ function toValidPublishedDate(value: unknown): Date {
       // fall through
     }
   }
+
   return new Date();
 }
 

@@ -1,6 +1,6 @@
 import { DocumentData } from "firebase/firestore";
-import { Feed } from "../types";
-import { coerceToString } from "./string";
+import { Feed } from "../../domain/types";
+import { coerceToString } from "../../lib/string";
 
 interface FirestoreDoc {
   id: string;
@@ -16,7 +16,7 @@ export function toFeed(docItem: FirestoreDoc): Feed {
     category: coerceToString(data.category),
     enabled: !!data.enabled,
     ownerEmail: coerceToString(data.ownerEmail),
-  } as Feed;
+  };
 }
 
 export function toFeeds(docs: FirestoreDoc[]): Feed[] {
