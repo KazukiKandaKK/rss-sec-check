@@ -1,54 +1,26 @@
 import { DocumentData } from "firebase/firestore";
-import { Article } from "../../domain/types";
-import { coerceToString } from "../../lib/string";
+import { Article, createArticle } from "../../domain/entities/article";
 
 interface FirestoreDoc {
   id: string;
   data(): DocumentData;
 }
 
-function toDate(value: unknown): Date {
-  if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return value;
-  }
-
-  if (
-    value &&
-    typeof value === "object" &&
-    "toDate" in value &&
-    typeof (value as { toDate: () => Date }).toDate === "function"
-  ) {
-    try {
-      const date = (value as { toDate: () => Date }).toDate();
-      if (!Number.isNaN(date.getTime())) return date;
-    } catch {
-      // fall through
-    }
-  }
-
-  if (typeof value === "number" || typeof value === "string") {
-    const date = new Date(value);
-    if (!Number.isNaN(date.getTime())) return date;
-  }
-
-  return new Date();
-}
-
 export function toArticle(docItem: FirestoreDoc): Article {
   const data = docItem.data();
-  return {
+  return createArticle({
     id: docItem.id,
-    title: coerceToString(data.title),
-    link: coerceToString(data.link),
-    source: coerceToString(data.source),
-    feedUrl: coerceToString(data.feedUrl),
-    snippet: coerceToString(data.snippet),
-    publishedAt: toDate(data.publishedAt),
-    fetchedAt: toDate(data.fetchedAt),
-    read: !!data.read,
-    starred: !!data.starred,
-    ownerEmail: coerceToString(data.ownerEmail),
-  };
+    title: data.title,
+    link: data.link,
+    source: data.source,
+    feedUrl: data.feedUrl,
+    snippet: data.snippet,
+    publishedAt: data.publishedAt,
+    fetchedAt: data.fetchedAt,
+    read: data.read,
+    starred: data.starred,
+    ownerEmail: data.ownerEmail,
+  });
 }
 
 export function toArticles(docs: FirestoreDoc[]): Article[] {

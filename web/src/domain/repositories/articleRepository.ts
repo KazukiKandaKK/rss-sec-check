@@ -1,4 +1,4 @@
-import { Article } from "../types";
+import { Article } from "../entities/article";
 
 export type ArticleListCallback = (
   articles: Article[],
@@ -11,6 +11,6 @@ export interface ArticleRepository {
     isOwner: boolean,
     onChange: ArticleListCallback
   ): () => void;
-  toggleRead(article: Article): Promise<void>;
-  toggleStar(article: Article): Promise<void>;
+  updateRead(article: Article): Promise<void>;
+  updateStar(article: Article): Promise<void>;
 }

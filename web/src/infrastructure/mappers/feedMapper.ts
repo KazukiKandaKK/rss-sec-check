@@ -1,6 +1,5 @@
 import { DocumentData } from "firebase/firestore";
-import { Feed } from "../../domain/types";
-import { coerceToString } from "../../lib/string";
+import { Feed, createFeed } from "../../domain/entities/feed";
 
 interface FirestoreDoc {
   id: string;
@@ -9,14 +8,14 @@ interface FirestoreDoc {
 
 export function toFeed(docItem: FirestoreDoc): Feed {
   const data = docItem.data();
-  return {
+  return createFeed({
     id: docItem.id,
-    url: coerceToString(data.url),
-    name: coerceToString(data.name),
-    category: coerceToString(data.category),
-    enabled: !!data.enabled,
-    ownerEmail: coerceToString(data.ownerEmail),
-  };
+    url: data.url,
+    name: data.name,
+    category: data.category,
+    enabled: data.enabled,
+    ownerEmail: data.ownerEmail,
+  });
 }
 
 export function toFeeds(docs: FirestoreDoc[]): Feed[] {

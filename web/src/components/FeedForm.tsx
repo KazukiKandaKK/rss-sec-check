@@ -1,12 +1,8 @@
 import { useState } from "react";
+import { FeedDraft } from "../domain/types";
 
 interface FeedFormProps {
-  onSubmit: (feed: {
-    url: string;
-    name: string;
-    category: string;
-    enabled: boolean;
-  }) => Promise<void>;
+  onSubmit: (feed: FeedDraft) => Promise<void>;
 }
 
 export function FeedForm({ onSubmit }: FeedFormProps) {

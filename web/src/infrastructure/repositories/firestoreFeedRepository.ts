@@ -10,7 +10,7 @@ import {
   where,
 } from "firebase/firestore";
 import { FeedRepository } from "../../domain/repositories/feedRepository";
-import { Feed } from "../../domain/types";
+import { Feed, FeedDraft } from "../../domain/entities/feed";
 import { db, OWNER_EMAIL } from "../../lib/firebase";
 import { toFeeds } from "../mappers/feedMapper";
 
@@ -35,10 +35,7 @@ export class FirestoreFeedRepository implements FeedRepository {
     });
   }
 
-  async addFeed(
-    feed: Omit<Feed, "id" | "ownerEmail">,
-    ownerEmail: string
-  ) {
+  async addFeed(feed: FeedDraft, ownerEmail: string) {
     await addDoc(collection(db, "feeds"), {
       ...feed,
       ownerEmail,

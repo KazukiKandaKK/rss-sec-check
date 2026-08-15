@@ -8,7 +8,7 @@ import {
   where,
 } from "firebase/firestore";
 import { ArticleRepository } from "../../domain/repositories/articleRepository";
-import { Article } from "../../domain/types";
+import { Article } from "../../domain/entities/article";
 import { db, OWNER_EMAIL } from "../../lib/firebase";
 import { toArticles } from "../mappers/articleMapper";
 
@@ -39,21 +39,21 @@ export class FirestoreArticleRepository implements ArticleRepository {
     );
   }
 
-  async toggleRead(article: Article) {
+  async updateRead(article: Article) {
     if (!article.id) {
-      throw new Error("Cannot toggle read: article.id is missing");
+      throw new Error("Cannot update read: article.id is missing");
     }
     await updateDoc(doc(db, "articles", article.id), {
-      read: !article.read,
+      read: article.read,
     });
   }
 
-  async toggleStar(article: Article) {
+  async updateStar(article: Article) {
     if (!article.id) {
-      throw new Error("Cannot toggle star: article.id is missing");
+      throw new Error("Cannot update star: article.id is missing");
     }
     await updateDoc(doc(db, "articles", article.id), {
-      starred: !article.starred,
+      starred: article.starred,
     });
   }
 }

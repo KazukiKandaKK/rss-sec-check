@@ -1,3 +1,4 @@
+import { Feed, toggleFeedEnabled } from "../domain/types";
 import { FeedForm } from "../components/FeedForm";
 import { FeedList } from "../components/FeedList";
 import { useAuth } from "../hooks/useAuth";
@@ -9,11 +10,12 @@ export function FeedsPage() {
   const { feeds, loading } = useFeeds(isOwner);
   const { addFeed, updateFeed, deleteFeed } = useFeedActions();
 
-  const handleToggleEnabled = (feed: { id: string; enabled: boolean }) => {
-    updateFeed(feed.id, { enabled: !feed.enabled });
+  const handleToggleEnabled = (feed: Feed) => {
+    const next = toggleFeedEnabled(feed);
+    updateFeed(next.id, { enabled: next.enabled });
   };
 
-  const handleDelete = (feed: { id: string; name: string }) => {
+  const handleDelete = (feed: Feed) => {
     if (
       confirm(
         `「${feed.name}」を削除しますか？この操作は元に戻せません。`

@@ -1,4 +1,4 @@
-import { Article } from "../types";
+import { Article } from "../domain/types";
 import { formatRelativeTime, formatAbsoluteTime } from "../lib/formatTime";
 import { SourceBadge } from "./SourceBadge";
 import { StarIcon, StarOutlineIcon, CheckIcon } from "./Icons";
@@ -9,35 +9,11 @@ interface ArticleCardProps {
   onToggleStar: (article: Article) => Promise<void>;
 }
 
-function toValidPublishedDate(value: unknown): Date {
-  if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return value;
-  }
-
-  if (
-    value &&
-    typeof value === "object" &&
-    "toDate" in value &&
-    typeof (value as { toDate: () => Date }).toDate === "function"
-  ) {
-    try {
-      const date = (value as { toDate: () => Date }).toDate();
-      if (!Number.isNaN(date.getTime())) return date;
-    } catch {
-      // fall through
-    }
-  }
-
-  return new Date();
-}
-
 export function ArticleCard({
   article,
   onToggleRead,
   onToggleStar,
 }: ArticleCardProps) {
-  const published = toValidPublishedDate(article.publishedAt);
-
   const handleToggleRead = async () => {
     try {
       await onToggleRead(article);
@@ -96,10 +72,10 @@ export function ArticleCard({
             </span>
             <time
               className="text-gray-500 dark:text-gray-500"
-              dateTime={published.toISOString()}
-              title={formatAbsoluteTime(published)}
+              dateTime={article.publishedAt.toISOString()}
+              title={formatAbsoluteTime(article.publishedAt)}
             >
-              {formatRelativeTime(published)}
+              {formatRelativeTime(article.publishedAt)}
             </time>
           </div>
           <p
