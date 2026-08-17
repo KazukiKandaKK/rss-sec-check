@@ -22,6 +22,7 @@ export const fetchRssOnSchedule = onSchedule(
     region: "us-central1",
     memory: "256MiB",
     timeoutSeconds: 120,
+    maxInstances: 1,
     secrets: [],
   } as ScheduleOptions,
   async () => {
