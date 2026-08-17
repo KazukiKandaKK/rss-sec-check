@@ -260,45 +260,53 @@ async function getOwnerEmail(db: Firestore): Promise<string | undefined> {
   return undefined;
 }
 
-export async function fetchAllFeeds(db: Firestore): Promise<FetchResult[]> {
-  const feedsSnapshot = await db
+async function loadEnabledFeeds(db: Firestore): Promise<FeedDoc[]> {
+  const snapshot = await db
     .collection("feeds")
     .where("enabled", "==", true)
     .get();
+  return snapshot.docs.map((doc) => ({ ...(doc.data() as FeedDoc) }));
+}
+
+async function processFeed(
+  db: Firestore,
+  feed: FeedDoc
+): Promise<FetchResult> {
+  try {
+    const items = await fetchFeedItems(feed.url);
+    const { inserted, updated } = await storeFeedItems(db, feed, items);
+    console.log(
+      `[${feed.name}] inserted=${inserted}, updated=${updated} (items=${items.length})`
+    );
+    return { feed, inserted, updated };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[${feed.name}] error: ${message}`);
+    return { feed, inserted: 0, updated: 0, error: message };
+  }
+}
+
+export async function fetchAllFeeds(db: Firestore): Promise<FetchResult[]> {
+  const feeds = await loadEnabledFeeds(db);
+  const needsOwner = feeds.some((feed) => !feed.ownerEmail);
+  const ownerEmail = needsOwner ? await getOwnerEmail(db) : undefined;
 
   const results: FetchResult[] = [];
-  let ownerEmail: string | undefined;
-
-  for (const feedDoc of feedsSnapshot.docs) {
-    const feed: FeedDoc = { ...(feedDoc.data() as FeedDoc) };
-    if (!feed.ownerEmail) {
-      if (!ownerEmail) {
-        ownerEmail = await getOwnerEmail(db);
-      }
-      feed.ownerEmail = ownerEmail;
-    }
-    if (!feed.ownerEmail) {
+  for (const feed of feeds) {
+    const feedWithOwner: FeedDoc = feed.ownerEmail
+      ? feed
+      : { ...feed, ownerEmail };
+    if (!feedWithOwner.ownerEmail) {
       console.error(`[${feed.name}] owner email not configured; skipping`);
       results.push({
-        feed,
+        feed: feedWithOwner,
         inserted: 0,
         updated: 0,
         error: "Owner email not configured",
       });
       continue;
     }
-    try {
-      const items = await fetchFeedItems(feed.url);
-      const { inserted, updated } = await storeFeedItems(db, feed, items);
-      results.push({ feed, inserted, updated });
-      console.log(
-        `[${feed.name}] inserted=${inserted}, updated=${updated} (items=${items.length})`
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      results.push({ feed, inserted: 0, updated: 0, error: message });
-      console.error(`[${feed.name}] error: ${message}`);
-    }
+    results.push(await processFeed(db, feedWithOwner));
   }
 
   return results;

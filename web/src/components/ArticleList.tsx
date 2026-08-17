@@ -1,10 +1,7 @@
-import { useDeferredValue, useMemo, useState } from "react";
-import { ArticleFilter } from "../types";
-import { SearchQuery } from "../domain/types";
 import { useAuth } from "../hooks/useAuth";
 import { useArticles } from "../hooks/useArticles";
 import { useArticleActions } from "../hooks/useArticleActions";
-import { filterArticles } from "../domain/services/filterArticles";
+import { useArticleFilters } from "../hooks/useArticleFilters";
 import { ArticleFilters } from "./ArticleFilters";
 import { ArticleCard } from "./ArticleCard";
 
@@ -13,23 +10,20 @@ interface ArticleListProps {
 }
 
 export function ArticleList({ sources }: ArticleListProps) {
-  const [filter, setFilter] = useState<ArticleFilter>("all");
-  const [source, setSource] = useState("all");
-  const [search, setSearch] = useState("");
-  const deferredSearch = useDeferredValue(search);
   const { isOwner } = useAuth();
-
   const { articles, loading, error } = useArticles(isOwner);
   const { toggleRead, toggleStar } = useArticleActions();
-
-  const searchQuery = useMemo(
-    () => SearchQuery.of(deferredSearch),
-    [deferredSearch]
-  );
-  const filteredArticles = useMemo(
-    () => filterArticles(articles, filter, source, searchQuery),
-    [articles, filter, source, searchQuery]
-  );
+  const {
+    filter,
+    setFilter,
+    source,
+    setSource,
+    search,
+    setSearch,
+    filteredArticles,
+    resetFilters,
+    hasActiveFilter,
+  } = useArticleFilters(articles);
 
   return (
     <div className="space-y-4">
@@ -56,13 +50,9 @@ export function ArticleList({ sources }: ArticleListProps) {
             </>
           )}
         </p>
-        {(filter !== "all" || source !== "all" || search.trim()) && (
+        {hasActiveFilter && (
           <button
-            onClick={() => {
-              setFilter("all");
-              setSource("all");
-              setSearch("");
-            }}
+            onClick={resetFilters}
             className="text-sm text-blue-600 hover:text-blue-700 hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-50 dark:text-blue-400 dark:hover:text-blue-300 dark:focus-visible:ring-offset-gray-950"
           >
             絞り込みを解除
