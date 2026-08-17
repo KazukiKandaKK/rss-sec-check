@@ -23,6 +23,7 @@ export const fetchRssOnSchedule = onSchedule(
     memory: "256MiB",
     timeoutSeconds: 120,
     maxInstances: 1,
+    ingressSettings: "ALLOW_INTERNAL_ONLY",
     secrets: [],
   } as ScheduleOptions,
   async () => {

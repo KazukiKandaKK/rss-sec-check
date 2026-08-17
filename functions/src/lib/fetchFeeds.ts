@@ -31,6 +31,46 @@ const parser = new Parser({ timeout: 30000 });
 
 const ALLOWED_SCHEMES = new Set(["http:", "https:"]);
 
+const BLOCKED_HOSTS = new Set([
+  "localhost",
+  "metadata",
+  "metadata.google",
+  "metadata.google.internal",
+]);
+
+const PRIVATE_HOST_SUFFIXES = [".internal", ".localhost"];
+
+const PRIVATE_IPv4_REGEX =
+  /^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.|169\.254\.|0\.|255\.)/;
+
+function isPrivateIpv6(hostname: string): boolean {
+  if (!hostname.includes(":")) return false;
+  const lower = hostname.toLowerCase();
+  return (
+    lower.startsWith("fc") || lower.startsWith("fd") || lower.startsWith("fe80")
+  );
+}
+
+export function isPublicUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (!ALLOWED_SCHEMES.has(parsed.protocol)) return false;
+
+  const hostname = parsed.hostname.toLowerCase();
+  if (BLOCKED_HOSTS.has(hostname)) return false;
+  for (const suffix of PRIVATE_HOST_SUFFIXES) {
+    if (hostname.endsWith(suffix)) return false;
+  }
+  if (hostname === "::1" || hostname === "[::1]") return false;
+  if (PRIVATE_IPv4_REGEX.test(hostname)) return false;
+  if (isPrivateIpv6(hostname)) return false;
+  return true;
+}
+
 export function isValidHttpUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
@@ -44,6 +84,9 @@ function resolveArticleLink(link: string, feedUrl: string): string | null {
   try {
     const absolute = new URL(link, feedUrl);
     if (!ALLOWED_SCHEMES.has(absolute.protocol)) {
+      return null;
+    }
+    if (!isPublicUrl(absolute.href)) {
       return null;
     }
     return absolute.href;
@@ -83,6 +126,9 @@ export function articleIdForLink(link: string): string {
 export async function fetchFeedItems(feedUrl: string): Promise<FeedItem[]> {
   if (!isValidHttpUrl(feedUrl)) {
     throw new Error(`Invalid feed URL scheme: ${feedUrl}`);
+  }
+  if (!isPublicUrl(feedUrl)) {
+    throw new Error(`Private or local feed URL is not allowed: ${feedUrl}`);
   }
 
   const parsed = await parser.parseURL(feedUrl);
