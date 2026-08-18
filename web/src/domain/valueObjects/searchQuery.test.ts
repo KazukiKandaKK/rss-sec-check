@@ -32,4 +32,20 @@ describe("SearchQuery", () => {
     const query = SearchQuery.of("CVE");
     expect(query.isIncludedIn("new cve reported")).toBe(true);
   });
+
+  it("treats multi-byte whitespace as a delimiter", () => {
+    const query = SearchQuery.of("  Hello\tWorld  ");
+    expect(query.term).toBe("hello\tworld");
+  });
+
+  it("matches special characters literally", () => {
+    const query = SearchQuery.of("C++");
+    expect(query.isIncludedIn("Learn C++ today")).toBe(true);
+    expect(query.isIncludedIn("Learn C today")).toBe(false);
+  });
+
+  it("does not match when text is empty and query is not", () => {
+    const query = SearchQuery.of("term");
+    expect(query.isIncludedIn("")).toBe(false);
+  });
 });

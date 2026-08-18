@@ -1,6 +1,7 @@
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import { Article, ArticleFilter, SearchQuery } from "../domain/types";
 import { filterArticles } from "../domain/services/filterArticles";
+import { hasActiveFilter } from "../lib/articleFilters";
 
 export function useArticleFilters(articles: Article[]) {
   const [filter, setFilter] = useState<ArticleFilter>("all");
@@ -24,8 +25,7 @@ export function useArticleFilters(articles: Article[]) {
     setSearch("");
   }, []);
 
-  const hasActiveFilter =
-    filter !== "all" || source !== "all" || search.trim().length > 0;
+  const isFilterActive = hasActiveFilter(filter, source, search);
 
   return {
     filter,
@@ -38,6 +38,6 @@ export function useArticleFilters(articles: Article[]) {
     searchQuery,
     filteredArticles,
     resetFilters,
-    hasActiveFilter,
+    hasActiveFilter: isFilterActive,
   };
 }
