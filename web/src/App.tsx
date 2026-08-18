@@ -1,32 +1,19 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Header } from "./components/Header";
 import { HomePage } from "./pages/HomePage";
 import { FeedsPage } from "./pages/FeedsPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useAuth } from "./hooks/useAuth";
 import { useFeeds } from "./hooks/useFeeds";
+import { useDarkMode } from "./hooks/useDarkMode";
 import { SunIcon, MoonIcon } from "./components/Icons";
 
 function App() {
   const [page, setPage] = useState<"home" | "feeds">("home");
-  const [darkMode, setDarkMode] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const stored = localStorage.getItem("darkMode");
-    if (stored != null) return stored === "true";
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
-  });
+  const { darkMode, setDarkMode } = useDarkMode();
 
   const { user, loading, isOwner, signIn } = useAuth();
   const { feeds } = useFeeds(isOwner);
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-    localStorage.setItem("darkMode", String(darkMode));
-  }, [darkMode]);
 
   const sources = feeds.map((feed) => feed.name);
 
