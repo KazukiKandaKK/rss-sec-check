@@ -72,4 +72,15 @@ describe("filterArticles", () => {
     const result = filterArticles(articles, "all" as ArticleFilter, "all", SearchQuery.of("   "));
     expect(result).toHaveLength(3);
   });
+
+  it("returns an empty array when articles is empty", () => {
+    const result = filterArticles([], "all" as ArticleFilter, "all", SearchQuery.of(""));
+    expect(result).toEqual([]);
+  });
+
+  it("filters a single-article array", () => {
+    const single = [articles[0]];
+    const result = filterArticles(single, "unread" as ArticleFilter, "all", SearchQuery.of(""));
+    expect(result).toHaveLength(1);
+  });
 });

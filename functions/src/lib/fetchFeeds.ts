@@ -45,7 +45,7 @@ const PRIVATE_IPv4_REGEX =
 
 function isPrivateIpv6(hostname: string): boolean {
   if (!hostname.includes(":")) return false;
-  const lower = hostname.toLowerCase();
+  const lower = hostname.replace(/^\[|\]$/g, "").toLowerCase();
   return (
     lower.startsWith("fc") || lower.startsWith("fd") || lower.startsWith("fe80")
   );
@@ -80,7 +80,7 @@ export function isValidHttpUrl(url: string): boolean {
   }
 }
 
-function resolveArticleLink(link: string, feedUrl: string): string | null {
+export function resolveArticleLink(link: string, feedUrl: string): string | null {
   try {
     const absolute = new URL(link, feedUrl);
     if (!ALLOWED_SCHEMES.has(absolute.protocol)) {
@@ -95,7 +95,7 @@ function resolveArticleLink(link: string, feedUrl: string): string | null {
   }
 }
 
-function toSnippet(item: Parser.Item): string {
+export function toSnippet(item: Parser.Item): string {
   // Only a short snippet is stored — never the full article body (copyright).
   const raw = item.contentSnippet || item.summary || "";
   const text = raw
@@ -108,7 +108,7 @@ function toSnippet(item: Parser.Item): string {
   return `${text.slice(0, MAX_SNIPPET_LENGTH)}…`;
 }
 
-function toPublishedAt(item: Parser.Item): Date {
+export function toPublishedAt(item: Parser.Item): Date {
   const dateString = item.isoDate || item.pubDate;
   if (dateString) {
     const parsed = new Date(dateString);
@@ -155,7 +155,7 @@ export async function fetchFeedItems(feedUrl: string): Promise<FeedItem[]> {
   return items;
 }
 
-function articleContentChanged(
+export function articleContentChanged(
   snapshot: FirebaseFirestore.DocumentSnapshot,
   item: FeedItem
 ): boolean {

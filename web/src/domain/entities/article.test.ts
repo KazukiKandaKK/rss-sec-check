@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { Timestamp } from "firebase/firestore";
 import {
   Article,
   createArticle,
@@ -77,6 +78,18 @@ describe("createArticle", () => {
     expect(Number.isNaN(article.publishedAt.getTime())).toBe(false);
     expect(article.fetchedAt).toBeInstanceOf(Date);
     expect(Number.isNaN(article.fetchedAt.getTime())).toBe(false);
+  });
+
+  it("accepts Firestore Timestamp objects", () => {
+    const published = new Date("2024-05-01T00:00:00Z");
+    const fetched = new Date("2024-05-02T00:00:00Z");
+    const article = createArticle({
+      publishedAt: Timestamp.fromDate(published),
+      fetchedAt: Timestamp.fromDate(fetched),
+    } as never);
+
+    expect(article.publishedAt.toISOString()).toBe(published.toISOString());
+    expect(article.fetchedAt.toISOString()).toBe(fetched.toISOString());
   });
 
   it("normalizes missing read and starred flags", () => {
