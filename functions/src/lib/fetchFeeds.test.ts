@@ -14,6 +14,7 @@ vi.mock("rss-parser", () => {
 import {
   isPublicUrl,
   isValidHttpUrl,
+  normalizeArticleLink,
   resolveArticleLink,
   toSnippet,
   toPublishedAt,
@@ -21,7 +22,12 @@ import {
   articleContentChanged,
   fetchFeedItems,
   fetchAllFeeds,
+  pruneOldArticles,
+  matchesKeywords,
+  buildDigest,
+  formatDigestText,
   FeedItem,
+  FetchResult,
 } from "./fetchFeeds";
 
 describe("isValidHttpUrl", () => {
@@ -524,5 +530,212 @@ describe("fetchAllFeeds", () => {
     const results = await fetchAllFeeds(db as never);
     expect(results[0]).toMatchObject({ inserted: 0, updated: 1 });
     expect(setCalls).toHaveLength(1);
+  });
+});
+
+describe("normalizeArticleLink", () => {
+  it("removes utm_* and known tracking params", () => {
+    expect(
+      normalizeArticleLink(
+        "https://example.com/a?utm_source=rss&utm_medium=feed&id=1"
+      )
+    ).toBe("https://example.com/a?id=1");
+    expect(normalizeArticleLink("https://example.com/a?fbclid=xyz")).toBe(
+      "https://example.com/a"
+    );
+  });
+
+  it("removes URL fragments", () => {
+    expect(normalizeArticleLink("https://example.com/a#section")).toBe(
+      "https://example.com/a"
+    );
+  });
+
+  it("keeps meaningful query params", () => {
+    expect(normalizeArticleLink("https://example.com/a?p=123")).toBe(
+      "https://example.com/a?p=123"
+    );
+  });
+
+  it("returns the input unchanged when not parseable", () => {
+    expect(normalizeArticleLink("not a url")).toBe("not a url");
+  });
+
+  it("dedupes article ids for tracking-tagged variants of the same link", () => {
+    const a = articleIdForLink(
+      normalizeArticleLink("https://example.com/a?utm_source=x")
+    );
+    const b = articleIdForLink(normalizeArticleLink("https://example.com/a"));
+    expect(a).toBe(b);
+  });
+});
+
+describe("matchesKeywords", () => {
+  const item: FeedItem = {
+    title: "Critical AWS Cognito vulnerability discovered",
+    link: "https://example.com/a",
+    snippet: "Attackers can bypass MFA in certain configurations.",
+    publishedAt: new Date(),
+  };
+
+  it("matches case-insensitively against title and snippet", () => {
+    expect(matchesKeywords(item, ["aws", "mfa", "kubernetes"])).toEqual([
+      "aws",
+      "mfa",
+    ]);
+  });
+
+  it("returns an empty array when nothing matches", () => {
+    expect(matchesKeywords(item, ["terraform"])).toEqual([]);
+  });
+
+  it("returns an empty array for an empty keyword list", () => {
+    expect(matchesKeywords(item, [])).toEqual([]);
+  });
+});
+
+describe("buildDigest / formatDigestText", () => {
+  function makeResult(overrides: Partial<FetchResult>): FetchResult {
+    return {
+      feed: {
+        url: "https://example.com/feed",
+        name: "Example",
+        category: "News",
+        enabled: true,
+        ownerEmail: "owner@example.com",
+      },
+      inserted: 0,
+      updated: 0,
+      newItems: [],
+      ...overrides,
+    };
+  }
+
+  const newItem: FeedItem = {
+    title: "New CVE in OpenSSL",
+    link: "https://example.com/cve",
+    snippet: "Details about the vulnerability",
+    publishedAt: new Date(),
+  };
+
+  it("includes all new items from Alert category feeds", () => {
+    const results = [
+      makeResult({
+        feed: {
+          url: "https://example.com/feed",
+          name: "CISA",
+          category: "Alert",
+          enabled: true,
+        },
+        inserted: 1,
+        newItems: [newItem],
+      }),
+    ];
+    const digest = buildDigest(results, []);
+    expect(digest.entries).toHaveLength(1);
+    expect(digest.entries[0]).toMatchObject({
+      feedName: "CISA",
+      title: "New CVE in OpenSSL",
+      matchedKeywords: [],
+    });
+  });
+
+  it("includes non-Alert items only when a watchlist keyword matches", () => {
+    const results = [
+      makeResult({ inserted: 1, newItems: [newItem] }),
+    ];
+    expect(buildDigest(results, []).entries).toHaveLength(0);
+    const digest = buildDigest(results, ["openssl"]);
+    expect(digest.entries).toHaveLength(1);
+    expect(digest.entries[0]?.matchedKeywords).toEqual(["openssl"]);
+  });
+
+  it("collects fetch errors", () => {
+    const results = [makeResult({ error: "network down" })];
+    const digest = buildDigest(results, []);
+    expect(digest.entries).toHaveLength(0);
+    expect(digest.fetchErrors).toEqual([
+      { feedName: "Example", error: "network down" },
+    ]);
+  });
+
+  it("formatDigestText returns null when there is nothing to report", () => {
+    expect(formatDigestText({ entries: [], fetchErrors: [] })).toBeNull();
+  });
+
+  it("formatDigestText renders entries with links and keyword notes", () => {
+    const digest = buildDigest(
+      [makeResult({ inserted: 1, newItems: [newItem] })],
+      ["openssl"]
+    );
+    const text = formatDigestText(digest);
+    expect(text).toContain("New CVE in OpenSSL");
+    expect(text).toContain("https://example.com/cve");
+    expect(text).toContain("[watch: openssl]");
+  });
+
+  it("formatDigestText renders fetch errors", () => {
+    const text = formatDigestText({
+      entries: [],
+      fetchErrors: [{ feedName: "Example", error: "boom" }],
+    });
+    expect(text).toContain("Example: boom");
+  });
+});
+
+describe("pruneOldArticles", () => {
+  interface FakeQueryDoc {
+    ref: { __id: string };
+  }
+
+  function makePruneDb(batches: FakeQueryDoc[][]) {
+    let call = 0;
+    const deleted: string[] = [];
+    const db = {
+      collection: () => ({
+        where: () => ({
+          where: () => ({
+            where: () => ({
+              limit: () => ({
+                get: async () => {
+                  const docs = batches[call] ?? [];
+                  call += 1;
+                  return { empty: docs.length === 0, docs };
+                },
+              }),
+            }),
+          }),
+        }),
+      }),
+      batch: () => ({
+        delete: (ref: { __id: string }) => {
+          deleted.push(ref.__id);
+        },
+        commit: async () => undefined,
+      }),
+    };
+    return { db, deleted };
+  }
+
+  it("returns 0 without querying when maxAgeDays is not positive", async () => {
+    const { db } = makePruneDb([]);
+    expect(await pruneOldArticles(db as never, 0)).toBe(0);
+    expect(await pruneOldArticles(db as never, -5)).toBe(0);
+    expect(await pruneOldArticles(db as never, Number.NaN)).toBe(0);
+  });
+
+  it("deletes matched documents and returns the count", async () => {
+    const { db, deleted } = makePruneDb([
+      [{ ref: { __id: "a" } }, { ref: { __id: "b" } }],
+    ]);
+    const count = await pruneOldArticles(db as never, 90);
+    expect(count).toBe(2);
+    expect(deleted).toEqual(["a", "b"]);
+  });
+
+  it("returns 0 when no documents match", async () => {
+    const { db, deleted } = makePruneDb([[]]);
+    expect(await pruneOldArticles(db as never, 90)).toBe(0);
+    expect(deleted).toEqual([]);
   });
 });
