@@ -25,7 +25,9 @@ async function main() {
 
   try {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT) as ServiceAccount;
+      const serviceAccount = JSON.parse(
+        process.env.FIREBASE_SERVICE_ACCOUNT
+      ) as ServiceAccount;
       initializeApp({ credential: cert(serviceAccount) });
     } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       initializeApp({
@@ -33,7 +35,8 @@ async function main() {
       });
     } else {
       initializeApp({
-        projectId: process.env.VITE_FIREBASE_PROJECT_ID || "rss-sec-check-placeholder",
+        projectId:
+          process.env.VITE_FIREBASE_PROJECT_ID || "rss-sec-check-placeholder",
       });
     }
   } catch (error) {

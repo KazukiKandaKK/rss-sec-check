@@ -1,5 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Timestamp } from "firebase-admin/firestore";
+
+const { parseURLMock } = vi.hoisted(() => ({ parseURLMock: vi.fn() }));
+
+vi.mock("rss-parser", () => {
+  return {
+    default: vi.fn().mockImplementation(() => ({
+      parseURL: parseURLMock,
+    })),
+  };
+});
+
 import {
   isPublicUrl,
   isValidHttpUrl,
@@ -8,6 +19,8 @@ import {
   toPublishedAt,
   articleIdForLink,
   articleContentChanged,
+  fetchFeedItems,
+  fetchAllFeeds,
   FeedItem,
 } from "./fetchFeeds";
 
@@ -225,5 +238,291 @@ describe("articleContentChanged", () => {
       publishedAt: Timestamp.fromDate(new Date("2024-01-01T00:00:00Z")),
     });
     expect(articleContentChanged(snapshot, item)).toBe(true);
+  });
+});
+
+describe("fetchFeedItems", () => {
+  beforeEach(() => {
+    parseURLMock.mockReset();
+  });
+
+  it("throws for an invalid URL scheme", async () => {
+    await expect(fetchFeedItems("ftp://example.com/feed")).rejects.toThrow(
+      "Invalid feed URL scheme"
+    );
+  });
+
+  it("throws for a private/local URL", async () => {
+    await expect(fetchFeedItems("http://127.0.0.1/feed")).rejects.toThrow(
+      "Private or local feed URL is not allowed"
+    );
+  });
+
+  it("parses items, skipping ones without a link or title", async () => {
+    parseURLMock.mockResolvedValue({
+      items: [
+        {
+          title: "Article 1",
+          link: "https://example.com/a1",
+          contentSnippet: "Snippet 1",
+          isoDate: "2024-06-01T00:00:00Z",
+        },
+        { title: "No link" },
+        { link: "https://example.com/no-title" },
+        {
+          title: "  Trimmed  ",
+          link: "  https://example.com/a2  ",
+          contentSnippet: "Snippet 2",
+        },
+      ],
+    });
+
+    const items = await fetchFeedItems("https://example.com/feed");
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({
+      title: "Article 1",
+      link: "https://example.com/a1",
+      snippet: "Snippet 1",
+    });
+    expect(items[1]).toMatchObject({
+      title: "Trimmed",
+      link: "https://example.com/a2",
+    });
+  });
+
+  it("skips items whose resolved link is private", async () => {
+    parseURLMock.mockResolvedValue({
+      items: [
+        {
+          title: "Bad link",
+          link: "http://127.0.0.1/secret",
+        },
+      ],
+    });
+
+    const items = await fetchFeedItems("https://example.com/feed");
+    expect(items).toHaveLength(0);
+  });
+
+  it("caps items at MAX_ITEMS_PER_FEED (50)", async () => {
+    parseURLMock.mockResolvedValue({
+      items: Array.from({ length: 60 }, (_, i) => ({
+        title: `Article ${i}`,
+        link: `https://example.com/a${i}`,
+      })),
+    });
+
+    const items = await fetchFeedItems("https://example.com/feed");
+    expect(items).toHaveLength(50);
+  });
+});
+
+describe("fetchAllFeeds", () => {
+  interface FakeDoc {
+    id: string;
+    exists: boolean;
+    data: () => Record<string, unknown> | undefined;
+  }
+
+  function makeDb(options: {
+    feeds: Array<Record<string, unknown>>;
+    owner?: string;
+    existingArticles?: Record<string, Record<string, unknown>>;
+  }) {
+    const { feeds, owner, existingArticles = {} } = options;
+    const setCalls: Array<{ id: string; data: unknown }> = [];
+
+    const articleRef = (id: string) => ({
+      __id: id,
+      __collection: "articles",
+    });
+
+    const db = {
+      collection(name: string) {
+        if (name === "feeds") {
+          return {
+            where: () => ({
+              get: async () => ({
+                docs: feeds.map((f) => ({ data: () => f })),
+              }),
+            }),
+          };
+        }
+        if (name === "config") {
+          return {
+            doc: () => ({
+              get: async () => ({
+                exists: owner !== undefined,
+                data: () => (owner !== undefined ? { email: owner } : undefined),
+              }),
+            }),
+          };
+        }
+        if (name === "articles") {
+          return {
+            doc: (id: string) => articleRef(id),
+          };
+        }
+        throw new Error(`Unexpected collection: ${name}`);
+      },
+      getAll: async (...refs: Array<{ __id: string }>): Promise<FakeDoc[]> => {
+        return refs.map((ref) => {
+          const existing = existingArticles[ref.__id];
+          return {
+            id: ref.__id,
+            exists: !!existing,
+            data: () => existing,
+          };
+        });
+      },
+      batch: () => ({
+        set: (ref: { __id: string }, data: unknown) => {
+          setCalls.push({ id: ref.__id, data });
+        },
+        commit: async () => undefined,
+      }),
+    };
+
+    return { db, setCalls };
+  }
+
+  beforeEach(() => {
+    parseURLMock.mockReset();
+  });
+
+  it("inserts new articles for enabled feeds using their own ownerEmail", async () => {
+    parseURLMock.mockResolvedValue({
+      items: [
+        {
+          title: "New article",
+          link: "https://example.com/new",
+          contentSnippet: "Snippet",
+          isoDate: "2024-06-01T00:00:00Z",
+        },
+      ],
+    });
+
+    const { db, setCalls } = makeDb({
+      feeds: [
+        {
+          url: "https://example.com/feed",
+          name: "Example",
+          category: "sec",
+          enabled: true,
+          ownerEmail: "owner@example.com",
+        },
+      ],
+    });
+
+    const results = await fetchAllFeeds(db as never);
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({ inserted: 1, updated: 0 });
+    expect(setCalls).toHaveLength(1);
+  });
+
+  it("falls back to config/owner email when a feed has no ownerEmail", async () => {
+    parseURLMock.mockResolvedValue({ items: [] });
+
+    const { db } = makeDb({
+      feeds: [
+        {
+          url: "https://example.com/feed",
+          name: "Example",
+          category: "sec",
+          enabled: true,
+        },
+      ],
+      owner: "owner@example.com",
+    });
+
+    const results = await fetchAllFeeds(db as never);
+    expect(results).toHaveLength(1);
+    expect(results[0]?.feed.ownerEmail).toBe("owner@example.com");
+    expect(results[0]?.error).toBeUndefined();
+  });
+
+  it("records an error result when no owner email can be resolved", async () => {
+    const { db } = makeDb({
+      feeds: [
+        {
+          url: "https://example.com/feed",
+          name: "Example",
+          category: "sec",
+          enabled: true,
+        },
+      ],
+    });
+
+    const results = await fetchAllFeeds(db as never);
+    expect(results).toHaveLength(1);
+    expect(results[0]?.error).toBe("Owner email not configured");
+    expect(parseURLMock).not.toHaveBeenCalled();
+  });
+
+  it("records a fetch error when the feed parser throws", async () => {
+    parseURLMock.mockRejectedValue(new Error("network down"));
+
+    const { db } = makeDb({
+      feeds: [
+        {
+          url: "https://example.com/feed",
+          name: "Example",
+          category: "sec",
+          enabled: true,
+          ownerEmail: "owner@example.com",
+        },
+      ],
+    });
+
+    const results = await fetchAllFeeds(db as never);
+    expect(results[0]?.error).toBe("network down");
+    expect(results[0]?.inserted).toBe(0);
+  });
+
+  it("returns an empty array when there are no enabled feeds", async () => {
+    const { db } = makeDb({ feeds: [] });
+    const results = await fetchAllFeeds(db as never);
+    expect(results).toEqual([]);
+    expect(parseURLMock).not.toHaveBeenCalled();
+  });
+
+  it("updates an existing article when content changed and skips when unchanged", async () => {
+    const link = "https://example.com/existing";
+    const id = articleIdForLink(link);
+
+    parseURLMock.mockResolvedValue({
+      items: [
+        {
+          title: "Updated title",
+          link,
+          contentSnippet: "New snippet",
+          isoDate: "2024-06-02T00:00:00Z",
+        },
+      ],
+    });
+
+    const { db, setCalls } = makeDb({
+      feeds: [
+        {
+          url: "https://example.com/feed",
+          name: "Example",
+          category: "sec",
+          enabled: true,
+          ownerEmail: "owner@example.com",
+        },
+      ],
+      existingArticles: {
+        [id]: {
+          title: "Old title",
+          link,
+          snippet: "Old snippet",
+          publishedAt: Timestamp.fromDate(new Date("2024-01-01T00:00:00Z")),
+        },
+      },
+    });
+
+    const results = await fetchAllFeeds(db as never);
+    expect(results[0]).toMatchObject({ inserted: 0, updated: 1 });
+    expect(setCalls).toHaveLength(1);
   });
 });

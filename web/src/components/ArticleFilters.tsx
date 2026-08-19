@@ -30,7 +30,11 @@ export function ArticleFilters({
 
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <div className="flex flex-wrap gap-2" role="group" aria-label="記事絞り込み">
+      <div
+        className="flex flex-wrap gap-2"
+        role="group"
+        aria-label="記事絞り込み"
+      >
         {(Object.keys(FILTER_LABELS) as ArticleFilter[]).map((key) => (
           <button
             key={key}

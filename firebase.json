@@ -7,23 +7,14 @@
     {
       "source": "functions",
       "codebase": "default",
-      "predeploy": [
-        "npm --prefix functions run build"
-      ]
+      "predeploy": ["npm --prefix functions run build"]
     }
   ],
   "hosting": {
     "site": "rss-sec-check",
     "public": "web/dist",
-    "ignore": [
-      "firebase.json",
-      "**/.git",
-      "**/.env*",
-      "**/node_modules"
-    ],
-    "predeploy": [
-      "npm --prefix web run build"
-    ],
+    "ignore": ["firebase.json", "**/.git", "**/.env*", "**/node_modules"],
+    "predeploy": ["npm --prefix web run build"],
     "rewrites": [
       {
         "source": "**",

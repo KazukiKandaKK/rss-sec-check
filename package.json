@@ -14,10 +14,14 @@
     "seed": "npm --prefix functions run build && npm --prefix scripts run seed",
     "fetch": "npm --prefix functions run build && npm --prefix scripts run fetch",
     "emulators": "firebase emulators:start",
-    "typecheck": "npm --prefix functions run build && npm --prefix web run typecheck"
+    "typecheck": "npm --prefix functions run build && npm --prefix web run typecheck",
+    "lint": "npm --prefix functions run lint && npm --prefix web run lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "firebase-tools": "^13.0.0"
+    "firebase-tools": "^13.0.0",
+    "prettier": "^3.3.3"
   },
   "engines": {
     "node": "22"

@@ -1,34 +1,23 @@
 module.exports = {
   root: true,
-  env: { browser: true, es2020: true },
+  env: { node: true, es2022: true },
   extends: [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended-type-checked",
-    "plugin:react-hooks/recommended",
     "prettier",
   ],
-  ignorePatterns: [
-    "dist",
-    ".eslintrc.cjs",
-    "vite.config.ts",
-    "postcss.config.js",
-    "tailwind.config.js",
-  ],
+  ignorePatterns: ["lib", ".eslintrc.cjs", "vitest.config.ts"],
   parser: "@typescript-eslint/parser",
   parserOptions: {
     project: "./tsconfig.eslint.json",
     tsconfigRootDir: __dirname,
   },
-  plugins: ["react-refresh"],
   rules: {
-    "react-refresh/only-export-components": [
-      "warn",
-      { allowConstantExport: true },
-    ],
+    "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
   },
   overrides: [
     {
-      files: ["**/*.test.ts", "**/*.test.tsx"],
+      files: ["**/*.test.ts"],
       rules: {
         "@typescript-eslint/no-unsafe-assignment": "off",
         "@typescript-eslint/no-unsafe-member-access": "off",

@@ -63,7 +63,7 @@ export function Header({ currentPage, onChangePage }: HeaderProps) {
                 {user.email}
               </span>
               <button
-                onClick={logout}
+                onClick={() => void logout()}
                 className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 dark:focus-visible:ring-offset-gray-950"
               >
                 サインアウト
@@ -71,7 +71,7 @@ export function Header({ currentPage, onChangePage }: HeaderProps) {
             </>
           ) : (
             <button
-              onClick={signIn}
+              onClick={() => void signIn()}
               className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-50 dark:focus-visible:ring-offset-gray-950"
             >
               サインイン

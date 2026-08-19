@@ -22,6 +22,16 @@ describe("formatTime", () => {
     it("returns a non-empty string for an invalid date", () => {
       expect(formatRelativeTime(new Date("invalid"))).not.toBe("");
     });
+
+    it("returns an empty string when formatting throws", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const throwing = new Date("2024-01-15T11:00:00Z");
+      vi.spyOn(throwing, "getTime").mockImplementation(() => {
+        throw new Error("boom");
+      });
+      expect(formatRelativeTime(throwing)).toBe("");
+      errorSpy.mockRestore();
+    });
   });
 
   describe("formatAbsoluteTime", () => {
@@ -35,6 +45,16 @@ describe("formatTime", () => {
     it("falls back to the current date for invalid input", () => {
       const formatted = formatAbsoluteTime(new Date("invalid"));
       expect(formatted).toMatch(/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/);
+    });
+
+    it("returns an empty string when formatting throws", () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const throwing = new Date("2024-01-15T11:00:00Z");
+      vi.spyOn(throwing, "getTime").mockImplementation(() => {
+        throw new Error("boom");
+      });
+      expect(formatAbsoluteTime(throwing)).toBe("");
+      errorSpy.mockRestore();
     });
   });
 });

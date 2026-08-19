@@ -14,7 +14,8 @@
     "declaration": false,
     "sourceMap": true,
     "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true
   },
   "compileOnSave": true,
   "include": ["src"],

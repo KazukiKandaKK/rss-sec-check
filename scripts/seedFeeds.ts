@@ -62,7 +62,10 @@ async function main() {
       credential: cert(process.env.GOOGLE_APPLICATION_CREDENTIALS),
     });
   } else {
-    initializeApp({ projectId: process.env.VITE_FIREBASE_PROJECT_ID || "rss-sec-check-placeholder" });
+    initializeApp({
+      projectId:
+        process.env.VITE_FIREBASE_PROJECT_ID || "rss-sec-check-placeholder",
+    });
   }
 
   const db = getFirestore();
