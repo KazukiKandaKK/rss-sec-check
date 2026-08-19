@@ -1,9 +1,16 @@
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import { Article, ArticleFilter, SearchQuery } from "../domain/types";
 import { filterArticles } from "../domain/services/filterArticles";
+import {
+  collapseDuplicateArticles,
+  CollapsedArticle,
+} from "../domain/services/collapseDuplicates";
 import { hasActiveFilter } from "../lib/articleFilters";
 
-export function useArticleFilters(articles: Article[]) {
+export function useArticleFilters(
+  articles: Article[],
+  watchKeywords: string[] = []
+) {
   const [filter, setFilter] = useState<ArticleFilter>("all");
   const [source, setSource] = useState("all");
   const [search, setSearch] = useState("");
@@ -15,8 +22,13 @@ export function useArticleFilters(articles: Article[]) {
   );
 
   const filteredArticles = useMemo(
-    () => filterArticles(articles, filter, source, searchQuery),
-    [articles, filter, source, searchQuery]
+    () => filterArticles(articles, filter, source, searchQuery, watchKeywords),
+    [articles, filter, source, searchQuery, watchKeywords]
+  );
+
+  const collapsedArticles: CollapsedArticle[] = useMemo(
+    () => collapseDuplicateArticles(filteredArticles),
+    [filteredArticles]
   );
 
   const resetFilters = useCallback(() => {
@@ -37,6 +49,7 @@ export function useArticleFilters(articles: Article[]) {
     deferredSearch,
     searchQuery,
     filteredArticles,
+    collapsedArticles,
     resetFilters,
     hasActiveFilter: isFilterActive,
   };

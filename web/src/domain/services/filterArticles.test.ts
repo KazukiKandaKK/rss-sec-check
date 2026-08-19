@@ -156,4 +156,36 @@ describe("filterArticles", () => {
     );
     expect(result).toHaveLength(1);
   });
+
+  it("filters by watched keywords (title or snippet, case-insensitive)", () => {
+    const result = filterArticles(
+      articles,
+      "watched" as ArticleFilter,
+      "all",
+      SearchQuery.of(""),
+      ["alpha", "beta"]
+    );
+    expect(result.map((a) => a.id)).toEqual(["1", "2"]);
+  });
+
+  it("watched filter returns nothing when the watchlist is empty", () => {
+    const result = filterArticles(
+      articles,
+      "watched" as ArticleFilter,
+      "all",
+      SearchQuery.of("")
+    );
+    expect(result).toEqual([]);
+  });
+
+  it("combines watched filter with source", () => {
+    const result = filterArticles(
+      articles,
+      "watched" as ArticleFilter,
+      "A",
+      SearchQuery.of(""),
+      ["alpha", "beta"]
+    );
+    expect(result.map((a) => a.id)).toEqual(["1"]);
+  });
 });
