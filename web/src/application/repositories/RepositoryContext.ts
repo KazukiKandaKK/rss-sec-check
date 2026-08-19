@@ -7,15 +7,14 @@ export interface RepositoryContextValue {
   feedRepository: FeedRepository;
 }
 
-export const RepositoryContext =
-  createContext<RepositoryContextValue | null>(null);
+export const RepositoryContext = createContext<RepositoryContextValue | null>(
+  null
+);
 
 export function useRepositories(): RepositoryContextValue {
   const value = useContext(RepositoryContext);
   if (!value) {
-    throw new Error(
-      "useRepositories must be used within a RepositoryProvider"
-    );
+    throw new Error("useRepositories must be used within a RepositoryProvider");
   }
   return value;
 }

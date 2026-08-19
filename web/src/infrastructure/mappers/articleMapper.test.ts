@@ -78,7 +78,7 @@ describe("toArticles", () => {
     const docs = [makeDoc("a"), makeDoc("b")];
     const articles = toArticles(docs);
     expect(articles).toHaveLength(2);
-    expect(articles[0].id).toBe("a");
-    expect(articles[1].id).toBe("b");
+    expect(articles[0]?.id).toBe("a");
+    expect(articles[1]?.id).toBe("b");
   });
 });

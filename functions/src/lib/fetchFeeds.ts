@@ -213,6 +213,7 @@ async function storeFeedItems(
   items.forEach((item, index) => {
     const ref = refs[index];
     const snapshot = snapshots[index];
+    if (!ref || !snapshot) return;
 
     if (snapshot.exists) {
       // Avoid overwriting source/feedUrl for existing articles so the

@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 import { initializeApp } from "firebase/app";
 import { getAuth, connectAuthEmulator, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";

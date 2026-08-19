@@ -92,8 +92,25 @@ describe("createArticle", () => {
     expect(article.fetchedAt.toISOString()).toBe(fetched.toISOString());
   });
 
+  it("falls back to now when toDate() throws", () => {
+    const throwingTimestamp = {
+      toDate: () => {
+        throw new Error("boom");
+      },
+    };
+    const article = createArticle({
+      publishedAt: throwingTimestamp,
+    } as never);
+
+    expect(article.publishedAt).toBeInstanceOf(Date);
+    expect(Number.isNaN(article.publishedAt.getTime())).toBe(false);
+  });
+
   it("normalizes missing read and starred flags", () => {
-    const article = createArticle({ read: undefined, starred: undefined } as never);
+    const article = createArticle({
+      read: undefined,
+      starred: undefined,
+    } as never);
     expect(article.read).toBe(false);
     expect(article.starred).toBe(false);
   });

@@ -33,7 +33,8 @@ export class ErrorBoundary extends Component<Props, State> {
               表示中にエラーが発生しました
             </h1>
             <p className="max-w-md text-sm text-gray-600 dark:text-gray-400">
-              {this.state.error?.message || "予期しないエラーです。ページを再読み込みしてください。"}
+              {this.state.error?.message ||
+                "予期しないエラーです。ページを再読み込みしてください。"}
             </p>
             <button
               onClick={() => window.location.reload()}

@@ -6,6 +6,7 @@ on:
     branches:
       - main
   workflow_dispatch:
+  workflow_call:
 
 concurrency:
   group: test-${{ github.ref }}
@@ -27,8 +28,8 @@ jobs:
 
       - run: npm run typecheck
 
-      - run: npm --prefix web run lint
+      - run: npm run lint
 
-      - run: npm --prefix web run test
+      - run: npm --prefix web run test:coverage
 
-      - run: npm --prefix functions run test
+      - run: npm --prefix functions run test:coverage

@@ -23,64 +23,137 @@ function makeArticle(overrides: Partial<Article> = {}): Article {
 
 describe("filterArticles", () => {
   const articles: Article[] = [
-    makeArticle({ id: "1", title: "Alpha", source: "A", read: false, starred: true }),
-    makeArticle({ id: "2", title: "Beta", source: "B", read: true, starred: false }),
-    makeArticle({ id: "3", title: "Gamma", source: "A", read: false, starred: false }),
+    makeArticle({
+      id: "1",
+      title: "Alpha",
+      source: "A",
+      read: false,
+      starred: true,
+    }),
+    makeArticle({
+      id: "2",
+      title: "Beta",
+      source: "B",
+      read: true,
+      starred: false,
+    }),
+    makeArticle({
+      id: "3",
+      title: "Gamma",
+      source: "A",
+      read: false,
+      starred: false,
+    }),
   ];
 
   it("returns all articles when filters are default", () => {
-    const result = filterArticles(articles, "all" as ArticleFilter, "all", SearchQuery.of(""));
+    const result = filterArticles(
+      articles,
+      "all" as ArticleFilter,
+      "all",
+      SearchQuery.of("")
+    );
     expect(result).toHaveLength(3);
   });
 
   it("filters by unread", () => {
-    const result = filterArticles(articles, "unread" as ArticleFilter, "all", SearchQuery.of(""));
+    const result = filterArticles(
+      articles,
+      "unread" as ArticleFilter,
+      "all",
+      SearchQuery.of("")
+    );
     expect(result.map((a) => a.id)).toEqual(["1", "3"]);
   });
 
   it("filters by starred", () => {
-    const result = filterArticles(articles, "starred" as ArticleFilter, "all", SearchQuery.of(""));
+    const result = filterArticles(
+      articles,
+      "starred" as ArticleFilter,
+      "all",
+      SearchQuery.of("")
+    );
     expect(result.map((a) => a.id)).toEqual(["1"]);
   });
 
   it("filters by source", () => {
-    const result = filterArticles(articles, "all" as ArticleFilter, "A", SearchQuery.of(""));
+    const result = filterArticles(
+      articles,
+      "all" as ArticleFilter,
+      "A",
+      SearchQuery.of("")
+    );
     expect(result.map((a) => a.id)).toEqual(["1", "3"]);
   });
 
   it("filters by search term (case-insensitive)", () => {
-    const result = filterArticles(articles, "all" as ArticleFilter, "all", SearchQuery.of("alp"));
+    const result = filterArticles(
+      articles,
+      "all" as ArticleFilter,
+      "all",
+      SearchQuery.of("alp")
+    );
     expect(result.map((a) => a.id)).toEqual(["1"]);
   });
 
   it("matches search term in snippet", () => {
-    const result = filterArticles(articles, "all" as ArticleFilter, "all", SearchQuery.of("snippet"));
+    const result = filterArticles(
+      articles,
+      "all" as ArticleFilter,
+      "all",
+      SearchQuery.of("snippet")
+    );
     expect(result).toHaveLength(3);
   });
 
   it("combines filter, source and search", () => {
-    const result = filterArticles(articles, "unread" as ArticleFilter, "A", SearchQuery.of("gamma"));
+    const result = filterArticles(
+      articles,
+      "unread" as ArticleFilter,
+      "A",
+      SearchQuery.of("gamma")
+    );
     expect(result.map((a) => a.id)).toEqual(["3"]);
   });
 
   it("returns an empty array when nothing matches", () => {
-    const result = filterArticles(articles, "starred" as ArticleFilter, "B", SearchQuery.of(""));
+    const result = filterArticles(
+      articles,
+      "starred" as ArticleFilter,
+      "B",
+      SearchQuery.of("")
+    );
     expect(result).toEqual([]);
   });
 
   it("ignores whitespace-only search", () => {
-    const result = filterArticles(articles, "all" as ArticleFilter, "all", SearchQuery.of("   "));
+    const result = filterArticles(
+      articles,
+      "all" as ArticleFilter,
+      "all",
+      SearchQuery.of("   ")
+    );
     expect(result).toHaveLength(3);
   });
 
   it("returns an empty array when articles is empty", () => {
-    const result = filterArticles([], "all" as ArticleFilter, "all", SearchQuery.of(""));
+    const result = filterArticles(
+      [],
+      "all" as ArticleFilter,
+      "all",
+      SearchQuery.of("")
+    );
     expect(result).toEqual([]);
   });
 
   it("filters a single-article array", () => {
-    const single = [articles[0]];
-    const result = filterArticles(single, "unread" as ArticleFilter, "all", SearchQuery.of(""));
+    const single = [articles[0]!];
+    const result = filterArticles(
+      single,
+      "unread" as ArticleFilter,
+      "all",
+      SearchQuery.of("")
+    );
     expect(result).toHaveLength(1);
   });
 });

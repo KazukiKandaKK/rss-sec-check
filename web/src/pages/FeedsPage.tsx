@@ -12,16 +12,12 @@ export function FeedsPage() {
 
   const handleToggleEnabled = (feed: Feed) => {
     const next = toggleFeedEnabled(feed);
-    updateFeed(next.id, { enabled: next.enabled });
+    void updateFeed(next.id, { enabled: next.enabled });
   };
 
   const handleDelete = (feed: Feed) => {
-    if (
-      confirm(
-        `「${feed.name}」を削除しますか？この操作は元に戻せません。`
-      )
-    ) {
-      deleteFeed(feed.id);
+    if (confirm(`「${feed.name}」を削除しますか？この操作は元に戻せません。`)) {
+      void deleteFeed(feed.id);
     }
   };
 

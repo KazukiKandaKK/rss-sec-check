@@ -67,7 +67,10 @@ export function ArticleCard({
           </h2>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
             <SourceBadge name={article.source} />
-            <span className="text-gray-400 dark:text-gray-600" aria-hidden="true">
+            <span
+              className="text-gray-400 dark:text-gray-600"
+              aria-hidden="true"
+            >
               /
             </span>
             <time
@@ -90,7 +93,7 @@ export function ArticleCard({
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
           <button
-            onClick={handleToggleRead}
+            onClick={() => void handleToggleRead()}
             className={`inline-flex min-h-[2.75rem] min-w-[4.5rem] items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-50 dark:focus-visible:ring-offset-gray-950 ${
               article.read
                 ? "border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
@@ -103,7 +106,7 @@ export function ArticleCard({
             {article.read ? "未読" : "既読"}
           </button>
           <button
-            onClick={handleToggleStar}
+            onClick={() => void handleToggleStar()}
             className={`inline-flex h-11 w-11 items-center justify-center rounded-md border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-50 dark:focus-visible:ring-offset-gray-950 ${
               article.starred
                 ? "border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400 dark:hover:bg-amber-900"

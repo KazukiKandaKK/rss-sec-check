@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { Feed, createFeed, createFeedDraft, isEnabled, toggleEnabled } from "./feed";
+import {
+  Feed,
+  createFeed,
+  createFeedDraft,
+  isEnabled,
+  toggleEnabled,
+} from "./feed";
 
 function makeFeed(overrides: Partial<Feed> = {}): Feed {
   return createFeed({

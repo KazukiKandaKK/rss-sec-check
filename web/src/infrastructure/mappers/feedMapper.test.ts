@@ -56,7 +56,7 @@ describe("toFeeds", () => {
     const docs = [makeDoc("a"), makeDoc("b")];
     const feeds = toFeeds(docs);
     expect(feeds).toHaveLength(2);
-    expect(feeds[0].id).toBe("a");
-    expect(feeds[1].id).toBe("b");
+    expect(feeds[0]?.id).toBe("a");
+    expect(feeds[1]?.id).toBe("b");
   });
 });

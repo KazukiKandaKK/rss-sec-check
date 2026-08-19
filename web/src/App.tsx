@@ -49,7 +49,7 @@ function App() {
           続けるには Google サインインが必要です。
         </p>
         <button
-          onClick={signIn}
+          onClick={() => void signIn()}
           className="inline-flex min-h-[2.75rem] items-center gap-2 rounded-md bg-blue-600 px-6 py-2 text-sm font-medium text-white transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-50 dark:focus-visible:ring-offset-gray-950"
         >
           <svg
@@ -87,7 +87,9 @@ function App() {
       <button
         onClick={() => setDarkMode((prev) => !prev)}
         className="fixed bottom-4 right-4 z-50 inline-flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:focus-visible:ring-offset-gray-950"
-        aria-label={darkMode ? "ライトモードに切り替え" : "ダークモードに切り替え"}
+        aria-label={
+          darkMode ? "ライトモードに切り替え" : "ダークモードに切り替え"
+        }
         title={darkMode ? "ライトモードに切り替え" : "ダークモードに切り替え"}
       >
         {darkMode ? (
