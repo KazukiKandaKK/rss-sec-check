@@ -4,6 +4,7 @@ import {
   createFeed,
   createFeedDraft,
   isEnabled,
+  isUnhealthy,
   toggleEnabled,
 } from "./feed";
 
@@ -91,5 +92,50 @@ describe("feed behavior", () => {
   it("isEnabled reflects the feed state", () => {
     expect(isEnabled(makeFeed({ enabled: true }))).toBe(true);
     expect(isEnabled(makeFeed({ enabled: false }))).toBe(false);
+  });
+});
+
+describe("feed health", () => {
+  it("defaults health fields when absent", () => {
+    const feed = makeFeed();
+    expect(feed.lastFetchedAt).toBeNull();
+    expect(feed.lastSuccessAt).toBeNull();
+    expect(feed.lastError).toBeNull();
+    expect(feed.consecutiveFailures).toBe(0);
+  });
+
+  it("converts Firestore Timestamp-like values via toDate", () => {
+    const date = new Date("2024-06-01T00:00:00Z");
+    const feed = createFeed({
+      lastFetchedAt: { toDate: () => date },
+      lastSuccessAt: date,
+    } as never);
+    expect(feed.lastFetchedAt).toEqual(date);
+    expect(feed.lastSuccessAt).toEqual(date);
+  });
+
+  it("normalizes invalid consecutiveFailures to 0", () => {
+    expect(
+      createFeed({ consecutiveFailures: "abc" } as never).consecutiveFailures
+    ).toBe(0);
+    expect(
+      createFeed({ consecutiveFailures: -3 } as never).consecutiveFailures
+    ).toBe(0);
+    expect(
+      createFeed({ consecutiveFailures: 2 } as never).consecutiveFailures
+    ).toBe(2);
+  });
+
+  it("keeps lastError only for non-empty strings", () => {
+    expect(createFeed({ lastError: "" } as never).lastError).toBeNull();
+    expect(createFeed({ lastError: null } as never).lastError).toBeNull();
+    expect(createFeed({ lastError: "boom" } as never).lastError).toBe("boom");
+  });
+
+  it("isUnhealthy is true only with consecutive failures", () => {
+    expect(isUnhealthy(makeFeed())).toBe(false);
+    expect(isUnhealthy(createFeed({ consecutiveFailures: 1 } as never))).toBe(
+      true
+    );
   });
 });

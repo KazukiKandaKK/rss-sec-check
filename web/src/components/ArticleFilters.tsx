@@ -14,6 +14,7 @@ const FILTER_LABELS: Record<ArticleFilter, string> = {
   all: "すべて",
   unread: "未読",
   starred: "スター",
+  watched: "ウォッチ",
 };
 
 export function ArticleFilters({

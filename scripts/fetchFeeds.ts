@@ -3,11 +3,49 @@ import { getFirestore } from "firebase-admin/firestore";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 // The compiled JS module is imported at runtime; transpileOnly handles this.
-// @ts-ignore
-import { fetchAllFeeds } from "../functions/lib/lib/fetchFeeds";
+import {
+  fetchAllFeeds,
+  pruneOldArticles,
+  loadWatchlistKeywords,
+  buildDigest,
+  formatDigestText,
+  // @ts-ignore
+} from "../functions/lib/lib/fetchFeeds";
 
 const CREDENTIALS_ERROR =
   "Firebase Admin credentials are not valid. For GitHub Actions, set FIREBASE_SERVICE_ACCOUNT to the JSON contents of the service account key (not the filename). For local runs, set GOOGLE_APPLICATION_CREDENTIALS to the path of the service account key file.";
+
+const DEFAULT_ARTICLE_MAX_AGE_DAYS = 90;
+
+function getArticleMaxAgeDays(): number {
+  const days = Number(
+    process.env.ARTICLE_MAX_AGE_DAYS || DEFAULT_ARTICLE_MAX_AGE_DAYS
+  );
+  if (Number.isNaN(days)) {
+    return DEFAULT_ARTICLE_MAX_AGE_DAYS;
+  }
+  return days;
+}
+
+async function notifySlack(text: string): Promise<void> {
+  const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+  if (!webhookUrl) {
+    return;
+  }
+  const response = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!response.ok) {
+    // Notification failure must not fail the fetch job itself.
+    console.error(
+      `Slack notification failed: ${response.status} ${response.statusText}`
+    );
+  } else {
+    console.log("Slack notification sent");
+  }
+}
 
 async function main() {
   const envPath = resolve(process.cwd(), "..", ".env");
@@ -60,6 +98,21 @@ async function main() {
         `[${result.feed.name}] inserted=${result.inserted}, updated=${result.updated}`
       );
     }
+  }
+
+  const pruned = await pruneOldArticles(db, getArticleMaxAgeDays());
+  if (pruned > 0) {
+    console.log(`Pruned ${pruned} old article(s)`);
+  }
+
+  const keywords = await loadWatchlistKeywords(db);
+  const digest = buildDigest(results, keywords);
+  const digestText = formatDigestText(digest);
+  if (digestText) {
+    console.log(digestText);
+    await notifySlack(digestText);
+  } else {
+    console.log("No digest-worthy articles in this run");
   }
 }
 

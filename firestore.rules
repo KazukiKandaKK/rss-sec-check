@@ -27,11 +27,28 @@ service cloud.firestore {
         && data.ownerEmail == request.auth.token.email;
     }
 
+    function isValidWatchlistData(data) {
+      return data.keys().hasOnly(['ownerEmail', 'keywords'])
+        && data.ownerEmail is string
+        && data.ownerEmail == request.auth.token.email
+        && data.keywords is list
+        && data.keywords.size() <= 50;
+    }
+
     match /config/{docId} {
       allow get: if request.auth != null
         && request.auth.token.email_verified == true
         && resource.data.email == request.auth.token.email;
       allow list, create, update, delete: if false;
+    }
+
+    match /settings/watchlist {
+      allow get: if isOwner();
+      allow create: if isOwnerCreating(request.resource.data)
+        && isValidWatchlistData(request.resource.data);
+      allow update: if isOwner()
+        && isValidWatchlistData(request.resource.data);
+      allow list, delete: if false;
     }
 
     match /articles/{articleId} {

@@ -7,12 +7,18 @@ interface ArticleCardProps {
   article: Article;
   onToggleRead: (article: Article) => Promise<void>;
   onToggleStar: (article: Article) => Promise<void>;
+  /** Watchlist keywords that matched this article (shown as badges). */
+  matchedKeywords?: string[];
+  /** Number of duplicate articles collapsed into this card. */
+  duplicateCount?: number;
 }
 
 export function ArticleCard({
   article,
   onToggleRead,
   onToggleStar,
+  matchedKeywords = [],
+  duplicateCount = 0,
 }: ArticleCardProps) {
   const handleToggleRead = async () => {
     try {
@@ -80,6 +86,23 @@ export function ArticleCard({
             >
               {formatRelativeTime(article.publishedAt)}
             </time>
+            {duplicateCount > 0 && (
+              <span
+                className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                title="同じURLの記事をまとめて表示しています"
+              >
+                +{duplicateCount} 重複
+              </span>
+            )}
+            {matchedKeywords.map((keyword) => (
+              <span
+                key={keyword}
+                className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-950 dark:text-purple-300"
+                title={`ウォッチキーワード「${keyword}」に一致`}
+              >
+                {keyword}
+              </span>
+            ))}
           </div>
           <p
             className={`mt-2 line-clamp-3 text-sm ${

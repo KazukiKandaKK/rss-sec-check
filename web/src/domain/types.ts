@@ -18,8 +18,9 @@ export {
   withEnabled,
   toggleEnabled as toggleFeedEnabled,
   isEnabled,
+  isUnhealthy as isFeedUnhealthy,
 } from "./entities/feed";
 
 export { SearchQuery } from "./valueObjects/searchQuery";
 
-export type ArticleFilter = "all" | "unread" | "starred";
+export type ArticleFilter = "all" | "unread" | "starred" | "watched";

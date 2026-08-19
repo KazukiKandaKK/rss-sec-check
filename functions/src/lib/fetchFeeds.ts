@@ -1,8 +1,10 @@
 import { createHash } from "crypto";
-import { Firestore, Timestamp } from "firebase-admin/firestore";
+import { Firestore, Timestamp, FieldValue } from "firebase-admin/firestore";
 import Parser from "rss-parser";
 
 export interface FeedDoc {
+  /** Firestore document id. Absent for feeds constructed in tests. */
+  id?: string;
   url: string;
   name: string;
   category: string;
@@ -21,6 +23,8 @@ export interface FetchResult {
   feed: FeedDoc;
   inserted: number;
   updated: number;
+  /** Items newly inserted in this run (used for notification digests). */
+  newItems: FeedItem[];
   error?: string;
 }
 
@@ -80,6 +84,47 @@ export function isValidHttpUrl(url: string): boolean {
   }
 }
 
+// Tracking parameters removed during link normalization so the same story
+// shared with different campaign tags dedupes to a single article document.
+const TRACKING_PARAM_PREFIXES = ["utm_"];
+const TRACKING_PARAMS = new Set([
+  "fbclid",
+  "gclid",
+  "dclid",
+  "msclkid",
+  "mc_cid",
+  "mc_eid",
+  "ref_src",
+  "cmpid",
+  "smid",
+]);
+
+export function normalizeArticleLink(link: string): string {
+  try {
+    const url = new URL(link);
+    url.hash = "";
+    const toDelete: string[] = [];
+    url.searchParams.forEach((_value, key) => {
+      const lower = key.toLowerCase();
+      if (
+        TRACKING_PARAMS.has(lower) ||
+        TRACKING_PARAM_PREFIXES.some((prefix) => lower.startsWith(prefix))
+      ) {
+        toDelete.push(key);
+      }
+    });
+    for (const key of toDelete) {
+      url.searchParams.delete(key);
+    }
+    if ([...url.searchParams.keys()].length === 0) {
+      url.search = "";
+    }
+    return url.href;
+  } catch {
+    return link;
+  }
+}
+
 export function resolveArticleLink(link: string, feedUrl: string): string | null {
   try {
     const absolute = new URL(link, feedUrl);
@@ -89,7 +134,7 @@ export function resolveArticleLink(link: string, feedUrl: string): string | null
     if (!isPublicUrl(absolute.href)) {
       return null;
     }
-    return absolute.href;
+    return normalizeArticleLink(absolute.href);
   } catch {
     return null;
   }
@@ -195,9 +240,9 @@ async function storeFeedItems(
   db: Firestore,
   feed: FeedDoc,
   items: FeedItem[]
-): Promise<{ inserted: number; updated: number }> {
+): Promise<{ inserted: number; updated: number; newItems: FeedItem[] }> {
   if (items.length === 0) {
-    return { inserted: 0, updated: 0 };
+    return { inserted: 0, updated: 0, newItems: [] };
   }
 
   const refs = items.map((item) =>
@@ -209,6 +254,7 @@ async function storeFeedItems(
   const fetchedAt = Timestamp.now();
   let inserted = 0;
   let updated = 0;
+  const newItems: FeedItem[] = [];
 
   items.forEach((item, index) => {
     const ref = refs[index];
@@ -239,11 +285,12 @@ async function storeFeedItems(
         starred: false,
       });
       inserted += 1;
+      newItems.push(item);
     }
   });
 
   await batch.commit();
-  return { inserted, updated };
+  return { inserted, updated, newItems };
 }
 
 async function getOwnerEmail(db: Firestore): Promise<string | undefined> {
@@ -266,7 +313,45 @@ async function loadEnabledFeeds(db: Firestore): Promise<FeedDoc[]> {
     .collection("feeds")
     .where("enabled", "==", true)
     .get();
-  return snapshot.docs.map((doc) => ({ ...(doc.data() as FeedDoc) }));
+  return snapshot.docs.map((doc) => ({
+    ...(doc.data() as FeedDoc),
+    id: doc.id,
+  }));
+}
+
+async function recordFeedHealth(
+  db: Firestore,
+  feed: FeedDoc,
+  result: FetchResult
+): Promise<void> {
+  if (!feed.id) return;
+  try {
+    const ref = db.collection("feeds").doc(feed.id);
+    if (result.error) {
+      await ref.set(
+        {
+          lastFetchedAt: Timestamp.now(),
+          lastError: result.error,
+          consecutiveFailures: FieldValue.increment(1),
+        },
+        { merge: true }
+      );
+    } else {
+      await ref.set(
+        {
+          lastFetchedAt: Timestamp.now(),
+          lastSuccessAt: Timestamp.now(),
+          lastError: null,
+          consecutiveFailures: 0,
+        },
+        { merge: true }
+      );
+    }
+  } catch (error) {
+    // Health tracking must never fail the fetch itself.
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[${feed.name}] failed to record feed health: ${message}`);
+  }
 }
 
 async function processFeed(
@@ -275,15 +360,19 @@ async function processFeed(
 ): Promise<FetchResult> {
   try {
     const items = await fetchFeedItems(feed.url);
-    const { inserted, updated } = await storeFeedItems(db, feed, items);
+    const { inserted, updated, newItems } = await storeFeedItems(
+      db,
+      feed,
+      items
+    );
     console.log(
       `[${feed.name}] inserted=${inserted}, updated=${updated} (items=${items.length})`
     );
-    return { feed, inserted, updated };
+    return { feed, inserted, updated, newItems };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`[${feed.name}] error: ${message}`);
-    return { feed, inserted: 0, updated: 0, error: message };
+    return { feed, inserted: 0, updated: 0, newItems: [], error: message };
   }
 }
 
@@ -303,12 +392,174 @@ export async function fetchAllFeeds(db: Firestore): Promise<FetchResult[]> {
         feed: feedWithOwner,
         inserted: 0,
         updated: 0,
+        newItems: [],
         error: "Owner email not configured",
       });
       continue;
     }
-    results.push(await processFeed(db, feedWithOwner));
+    const result = await processFeed(db, feedWithOwner);
+    await recordFeedHealth(db, feedWithOwner, result);
+    results.push(result);
   }
 
   return results;
+}
+
+const PRUNE_BATCH_SIZE = 400;
+
+/**
+ * Deletes read, non-starred articles older than {@link maxAgeDays}
+ * (based on publishedAt) to keep the collection within Spark quotas.
+ * Returns the number of deleted documents.
+ */
+export async function pruneOldArticles(
+  db: Firestore,
+  maxAgeDays: number
+): Promise<number> {
+  if (!Number.isFinite(maxAgeDays) || maxAgeDays <= 0) {
+    return 0;
+  }
+  const cutoff = Timestamp.fromDate(
+    new Date(Date.now() - maxAgeDays * 24 * 60 * 60 * 1000)
+  );
+
+  let totalDeleted = 0;
+  // Loop because each query is capped at PRUNE_BATCH_SIZE docs.
+  // starred articles are never deleted; unread articles are kept as well
+  // so the owner never loses something they haven't triaged yet.
+  for (;;) {
+    const snapshot = await db
+      .collection("articles")
+      .where("read", "==", true)
+      .where("starred", "==", false)
+      .where("publishedAt", "<", cutoff)
+      .limit(PRUNE_BATCH_SIZE)
+      .get();
+
+    if (snapshot.empty) break;
+
+    const batch = db.batch();
+    for (const doc of snapshot.docs) {
+      batch.delete(doc.ref);
+    }
+    await batch.commit();
+    totalDeleted += snapshot.docs.length;
+
+    if (snapshot.docs.length < PRUNE_BATCH_SIZE) break;
+  }
+
+  if (totalDeleted > 0) {
+    console.log(`[prune] deleted ${totalDeleted} old article(s)`);
+  }
+  return totalDeleted;
+}
+
+export interface WatchlistDoc {
+  keywords: string[];
+}
+
+export async function loadWatchlistKeywords(db: Firestore): Promise<string[]> {
+  try {
+    const doc = await db.collection("settings").doc("watchlist").get();
+    if (!doc.exists) return [];
+    const data = doc.data();
+    if (!data || !Array.isArray(data.keywords)) return [];
+    return data.keywords
+      .filter((keyword): keyword is string => typeof keyword === "string")
+      .map((keyword) => keyword.trim())
+      .filter((keyword) => keyword.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+export function matchesKeywords(
+  item: FeedItem,
+  keywords: string[]
+): string[] {
+  const haystack = `${item.title} ${item.snippet}`.toLowerCase();
+  return keywords.filter((keyword) =>
+    haystack.includes(keyword.toLowerCase())
+  );
+}
+
+export interface DigestEntry {
+  feedName: string;
+  category: string;
+  title: string;
+  link: string;
+  matchedKeywords: string[];
+}
+
+export interface Digest {
+  entries: DigestEntry[];
+  fetchErrors: Array<{ feedName: string; error: string }>;
+}
+
+const ALERT_CATEGORIES = new Set(["alert"]);
+const MAX_DIGEST_ENTRIES = 20;
+
+/**
+ * Builds a notification digest from fetch results: new articles from Alert
+ * category feeds and new articles matching any watchlist keyword.
+ */
+export function buildDigest(
+  results: FetchResult[],
+  watchlistKeywords: string[]
+): Digest {
+  const entries: DigestEntry[] = [];
+  const fetchErrors: Array<{ feedName: string; error: string }> = [];
+
+  for (const result of results) {
+    if (result.error) {
+      fetchErrors.push({ feedName: result.feed.name, error: result.error });
+      continue;
+    }
+    const isAlertFeed = ALERT_CATEGORIES.has(
+      result.feed.category.toLowerCase()
+    );
+    for (const item of result.newItems) {
+      const matchedKeywords = matchesKeywords(item, watchlistKeywords);
+      if (isAlertFeed || matchedKeywords.length > 0) {
+        entries.push({
+          feedName: result.feed.name,
+          category: result.feed.category,
+          title: item.title,
+          link: item.link,
+          matchedKeywords,
+        });
+      }
+    }
+  }
+
+  return { entries, fetchErrors };
+}
+
+export function formatDigestText(digest: Digest): string | null {
+  if (digest.entries.length === 0 && digest.fetchErrors.length === 0) {
+    return null;
+  }
+
+  const lines: string[] = [];
+  if (digest.entries.length > 0) {
+    lines.push(`🔔 セキュリティ記事ダイジェスト (${digest.entries.length}件)`);
+    for (const entry of digest.entries.slice(0, MAX_DIGEST_ENTRIES)) {
+      const keywordNote =
+        entry.matchedKeywords.length > 0
+          ? ` [watch: ${entry.matchedKeywords.join(", ")}]`
+          : "";
+      lines.push(`• [${entry.feedName}] ${entry.title}${keywordNote}`);
+      lines.push(`  ${entry.link}`);
+    }
+    if (digest.entries.length > MAX_DIGEST_ENTRIES) {
+      lines.push(`…ほか ${digest.entries.length - MAX_DIGEST_ENTRIES} 件`);
+    }
+  }
+  if (digest.fetchErrors.length > 0) {
+    lines.push(`⚠️ フィード取得エラー (${digest.fetchErrors.length}件)`);
+    for (const failure of digest.fetchErrors) {
+      lines.push(`• ${failure.feedName}: ${failure.error}`);
+    }
+  }
+  return lines.join("\n");
 }
