@@ -1,0 +1,58 @@
+version: 2
+updates:
+  # npm (root) — トップレベルの package.json
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - "dependencies"
+
+  # npm (functions/) — Firebase Functions
+  - package-ecosystem: "npm"
+    directory: "/functions"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - "dependencies"
+
+  # npm (web/) — フロントエンド
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - "dependencies"
+
+  # GitHub Actions ワークフロー
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - "dependencies"
+      - "github-actions"
