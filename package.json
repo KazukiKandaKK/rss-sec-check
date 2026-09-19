@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "firebase-tools": "^13.0.0",
-    "prettier": "^3.3.3"
+    "prettier": "^3.9.7"
   },
   "engines": {
     "node": "22"
