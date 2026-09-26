@@ -1,7 +1,11 @@
 import { onSchedule, ScheduleOptions } from "firebase-functions/v2/scheduler";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
-import { fetchAllFeeds, fetchFeedItems } from "./lib/fetchFeeds.js";
+import {
+  fetchAllFeeds,
+  fetchFeedItems,
+  pruneOldArticles,
+} from "./lib/fetchFeeds.js";
 
 initializeApp();
 
@@ -13,6 +17,14 @@ function getScheduleExpression(): string {
     return "every 30 minutes";
   }
   return `every ${interval} minutes`;
+}
+
+function getArticleMaxAgeDays(): number {
+  const days = Number(process.env.ARTICLE_MAX_AGE_DAYS || "90");
+  if (Number.isNaN(days)) {
+    return 90;
+  }
+  return days;
 }
 
 export const fetchRssOnSchedule = onSchedule(
@@ -28,6 +40,7 @@ export const fetchRssOnSchedule = onSchedule(
   } as ScheduleOptions,
   async () => {
     await fetchAllFeeds(db);
+    await pruneOldArticles(db, getArticleMaxAgeDays());
   }
 );
 

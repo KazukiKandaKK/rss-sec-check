@@ -163,6 +163,17 @@ gcloud iam service-accounts keys create ./service-account-rss-fetch.json \
 
 3. ワークフローは毎日 JST 6:00（UTC 21:07）に実行されます。手動実行は Actions タブの「Fetch RSS feeds」→ Run workflow から行えます。
 
+4. （任意）Slack 通知を有効にする場合は、Slack の Incoming Webhook URL を Secret **`SLACK_WEBHOOK_URL`** に登録します。各 fetch 実行後、Alert カテゴリの新着記事・ウォッチキーワードに一致した新着記事・フィード取得エラーがダイジェストとして送信されます。
+
+## 機能
+
+- **ウォッチキーワード**: フィード管理ページでカンマ区切りのキーワード（最大50件）を登録できます。タイトル・スニペットに一致した記事はバッジでハイライトされ、「ウォッチ」フィルタで絞り込めます。Slack 通知のダイジェスト対象にもなります（`settings/watchlist` ドキュメントに保存）。
+- **通知ダイジェスト**: fetch 実行後に Alert カテゴリ新着 + ウォッチ一致新着 + 取得エラーを Slack Incoming Webhook に送信します（`SLACK_WEBHOOK_URL` 未設定時はスキップ）。
+- **記事の自動間引き**: 既読かつ非スターで `ARTICLE_MAX_AGE_DAYS`（デフォルト90日、`publishedAt` 基準）を超えた記事を fetch 時に削除し、Spark 無料枠を保護します。スター付き・未読記事は削除されません。
+- **フィードヘルス**: fetch 結果（最終取得/最終成功/連続失敗回数/最終エラー）を feeds ドキュメントに記録し、フィード管理ページの「取得状態」列に表示します。静かに死んだ RSS に気づけます。
+- **重複記事の折りたたみ**: トラッキングパラメータ（`utm_*`, `fbclid` 等）とフラグメントを正規化し、同一URLの記事を1件にまとめて表示します（「+N 重複」バッジ）。取得時にも同じ正規化を適用して保存段階で重複を防ぎます。
+- **OPML インポート/エクスポート**: フィード管理ページでフィード一覧を OPML 2.0 としてエクスポート、他リーダーからの OPML をインポートできます（登録済みURLはスキップ）。
+
 ### Blaze プランに移行する場合
 
 課金を有効化（Blaze）すれば、同梱の Cloud Functions `fetchRssOnSchedule`（30分間隔、`FETCH_SCHEDULE_INTERVAL` で変更可）に切り替えられます。`firebase deploy --only functions` で Cloud Scheduler ジョブが自動作成されます。その場合は GitHub Actions ワークフローを無効化してください。

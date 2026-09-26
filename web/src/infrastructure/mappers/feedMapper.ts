@@ -15,6 +15,10 @@ export function toFeed(docItem: FirestoreDoc): Feed {
     category: data.category,
     enabled: data.enabled,
     ownerEmail: data.ownerEmail,
+    lastFetchedAt: data.lastFetchedAt,
+    lastSuccessAt: data.lastSuccessAt,
+    lastError: data.lastError,
+    consecutiveFailures: data.consecutiveFailures,
   });
 }
 

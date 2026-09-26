@@ -1,9 +1,40 @@
-import { Feed } from "../types";
+import { Feed, isFeedUnhealthy } from "../types";
+import { formatRelativeTime, formatAbsoluteTime } from "../lib/formatTime";
 
 interface FeedListProps {
   feeds: Feed[];
   onToggleEnabled: (feed: Feed) => void;
   onDelete: (feed: Feed) => void;
+}
+
+function FeedHealthCell({ feed }: { feed: Feed }) {
+  if (!feed.lastFetchedAt) {
+    return <span className="text-gray-400 dark:text-gray-600">未取得</span>;
+  }
+  if (isFeedUnhealthy(feed)) {
+    return (
+      <span
+        className="inline-flex items-center gap-1 font-medium text-red-600 dark:text-red-400"
+        title={feed.lastError ?? undefined}
+      >
+        <span aria-hidden="true">●</span>
+        {feed.consecutiveFailures}回連続失敗
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-green-700 dark:text-green-400"
+      title={
+        feed.lastSuccessAt ? formatAbsoluteTime(feed.lastSuccessAt) : undefined
+      }
+    >
+      <span aria-hidden="true">●</span>
+      {feed.lastSuccessAt
+        ? `成功 (${formatRelativeTime(feed.lastSuccessAt)})`
+        : "成功"}
+    </span>
+  );
 }
 
 export function FeedList({ feeds, onToggleEnabled, onDelete }: FeedListProps) {
@@ -31,6 +62,9 @@ export function FeedList({ feeds, onToggleEnabled, onDelete }: FeedListProps) {
             </th>
             <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
               URL
+            </th>
+            <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
+              取得状態
             </th>
             <th className="px-4 py-2 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
               削除
@@ -65,6 +99,9 @@ export function FeedList({ feeds, onToggleEnabled, onDelete }: FeedListProps) {
                 >
                   {feed.url}
                 </a>
+              </td>
+              <td className="whitespace-nowrap px-4 py-3 text-sm">
+                <FeedHealthCell feed={feed} />
               </td>
               <td className="px-4 py-3">
                 <button

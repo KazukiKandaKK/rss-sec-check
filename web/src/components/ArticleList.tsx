@@ -2,6 +2,8 @@ import { useAuth } from "../hooks/useAuth";
 import { useArticles } from "../hooks/useArticles";
 import { useArticleActions } from "../hooks/useArticleActions";
 import { useArticleFilters } from "../hooks/useArticleFilters";
+import { useWatchlist } from "../hooks/useWatchlist";
+import { matchWatchKeywords } from "../domain/services/watchlist";
 import { ArticleFilters } from "./ArticleFilters";
 import { ArticleCard } from "./ArticleCard";
 
@@ -12,6 +14,7 @@ interface ArticleListProps {
 export function ArticleList({ sources }: ArticleListProps) {
   const { isOwner } = useAuth();
   const { articles, loading, error } = useArticles(isOwner);
+  const { keywords } = useWatchlist(isOwner);
   const { toggleRead, toggleStar } = useArticleActions();
   const {
     filter,
@@ -20,10 +23,10 @@ export function ArticleList({ sources }: ArticleListProps) {
     setSource,
     search,
     setSearch,
-    filteredArticles,
+    collapsedArticles,
     resetFilters,
     hasActiveFilter,
-  } = useArticleFilters(articles);
+  } = useArticleFilters(articles, keywords);
 
   return (
     <div className="space-y-4">
@@ -44,7 +47,7 @@ export function ArticleList({ sources }: ArticleListProps) {
           ) : (
             <>
               <span className="font-medium text-gray-900 dark:text-gray-100">
-                {filteredArticles.length}
+                {collapsedArticles.length}
               </span>
               件の記事
             </>
@@ -80,24 +83,32 @@ export function ArticleList({ sources }: ArticleListProps) {
         </div>
       )}
 
-      {!loading && !error && filteredArticles.length === 0 && (
+      {!loading && !error && collapsedArticles.length === 0 && (
         <div className="rounded-lg border border-gray-200 bg-white py-12 text-center dark:border-gray-800 dark:bg-gray-900">
           <p className="text-gray-500 dark:text-gray-400">
             {filter === "all" && source === "all" && !search.trim()
               ? "まだ記事がありません。フィードを追加して記事を取得してください。"
-              : "該当する記事がありません。絞り込み条件を変更してください。"}
+              : filter === "watched" && keywords.length === 0
+                ? "ウォッチキーワードが未登録です。フィード管理ページで登録してください。"
+                : "該当する記事がありません。絞り込み条件を変更してください。"}
           </p>
         </div>
       )}
 
-      {!loading && !error && filteredArticles.length > 0 && (
+      {!loading && !error && collapsedArticles.length > 0 && (
         <div className="space-y-3">
-          {filteredArticles.map((article) => (
+          {collapsedArticles.map(({ article, duplicateCount }) => (
             <ArticleCard
               key={article.id}
               article={article}
               onToggleRead={toggleRead}
               onToggleStar={toggleStar}
+              matchedKeywords={matchWatchKeywords(
+                article.title,
+                article.snippet,
+                keywords
+              )}
+              duplicateCount={duplicateCount}
             />
           ))}
         </div>

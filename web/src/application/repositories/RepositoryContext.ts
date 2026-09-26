@@ -1,10 +1,12 @@
 import { createContext, useContext } from "react";
 import { ArticleRepository } from "../../domain/repositories/articleRepository";
 import { FeedRepository } from "../../domain/repositories/feedRepository";
+import { WatchlistRepository } from "../../domain/repositories/watchlistRepository";
 
 export interface RepositoryContextValue {
   articleRepository: ArticleRepository;
   feedRepository: FeedRepository;
+  watchlistRepository: WatchlistRepository;
 }
 
 export const RepositoryContext = createContext<RepositoryContextValue | null>(
